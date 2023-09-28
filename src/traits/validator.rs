@@ -1,5 +1,5 @@
-use serde_json::Value;
 use crate::errors::validation_error::ValidationError;
+use serde_json::Value;
 
 /// The primary trait that is used for validating a [Value]. This trait can be used to implement
 /// custom validation logic for validating types that are not supported directly by the library.

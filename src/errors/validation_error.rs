@@ -14,7 +14,8 @@ pub enum ValidationError {
 }
 
 impl<T> From<T> for ValidationError
-where T: Error + 'static
+where
+    T: Error + 'static,
 {
     fn from(value: T) -> Self {
         ValidationError::Custom(Box::new(value))

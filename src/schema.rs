@@ -1,7 +1,7 @@
-use serde_json::Value;
 use crate::errors::validation_error::ValidationError;
 use crate::field::Field;
 use crate::Validator;
+use serde_json::Value;
 
 #[derive(Debug)]
 pub struct Schema {
@@ -16,8 +16,6 @@ impl Validator for Schema {
 
 impl From<Field> for Schema {
     fn from(value: Field) -> Self {
-        Self {
-            root: value,
-        }
+        Self { root: value }
     }
 }

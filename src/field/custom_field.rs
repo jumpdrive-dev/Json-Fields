@@ -1,7 +1,7 @@
-use std::fmt::{Debug, Formatter};
-use serde_json::Value;
 use crate::errors::validation_error::ValidationError;
 use crate::Validator;
+use serde_json::Value;
+use std::fmt::{Debug, Formatter};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -56,10 +56,7 @@ use serde::{Deserialize, Serialize};
 /// assert!(object_field.validate(&incorrect_uuid).is_err());
 /// assert!(object_field.validate(&correct_uuid).is_ok());
 /// ```
-#[cfg_attr(
-feature = "serde",
-derive(Serialize, Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CustomField(Box<dyn Validator>);
 
 impl CustomField {
