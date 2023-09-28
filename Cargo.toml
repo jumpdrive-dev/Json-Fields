@@ -1,8 +1,17 @@
 [package]
-name = "Json-Fields"
+name = "json-fields"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1.0.188", features = ["derive"], optional = true }
+serde_json = "1.0.107"
+thiserror = "1.0.49"
+
+[dev-dependencies]
+uuid = "1.4.1"
+
+[features]
+serde = ["dep:serde"]
