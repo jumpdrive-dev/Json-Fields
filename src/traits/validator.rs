@@ -1,5 +1,6 @@
 use crate::errors::validation_error::ValidationError;
 use serde_json::Value;
+use crate::validator_impl;
 
 /// The primary trait that is used for validating a [Value]. This trait can be used to implement
 /// custom validation logic for validating types that are not supported directly by the library.
@@ -46,7 +47,14 @@ use serde_json::Value;
 /// assert!(validator.validate(&incorrect_uuid).is_err());
 /// assert!(validator.validate(&correct_uuid).is_ok());
 /// ```
+///
+/// The library re-exports [serde::Serialize] and [serde::Deserialize], but you can use those
+/// directly from serde if that is desired. The same is true for [validator_impl]. It is a re-export
+/// for [typetag::serde] and you can use that instead if you want.
 #[typetag::serde(tag = "custom")]
 pub trait Validator {
+    /// Validates the provided value and check if it is valid. Return `Ok(())` to indicate that the
+    /// value is correct and return a [ValidationError] if it's not correct with information
+    /// as to why it did pass.
     fn validate(&self, value: &Value) -> Result<(), ValidationError>;
 }
