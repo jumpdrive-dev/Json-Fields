@@ -1,17 +1,15 @@
+use serde::{Deserialize, Serialize};
 use crate::errors::validation_error::ValidationError;
 use crate::field::Field;
-use crate::Validator;
+use crate::{Validator, validator_impl};
 use serde_json::Value;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OptionalField {
     field: Box<Field>,
 }
 
+#[validator_impl]
 impl Validator for OptionalField {
     fn validate(&self, value: &Value) -> Result<(), ValidationError> {
         todo!()

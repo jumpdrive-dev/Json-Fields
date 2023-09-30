@@ -10,8 +10,9 @@ use serde_json::Value;
 /// use thiserror::Error;
 /// use uuid::Uuid;
 /// use json_fields::errors::validation_error::ValidationError;
-/// use json_fields::Validator;
+/// use json_fields::{Deserialize, Serialize, Validator, validator_impl};
 ///
+/// #[derive(Serialize, Deserialize)]
 /// struct UuidValidator;
 ///
 /// #[derive(Debug, Error)]
@@ -23,14 +24,15 @@ use serde_json::Value;
 ///     InvalidUuid,
 /// }
 ///
+/// #[validator_impl]
 /// impl Validator for UuidValidator {
 ///     fn validate(&self, value: &Value) -> Result<(), ValidationError> {
 ///         let Value::String(string) = value else {
-///             return Err(UuidValidationError::NotAString.into());
+///             return Err(ValidationError::new_custom(UuidValidationError::NotAString));
 ///         };
 ///
 ///         Uuid::from_str(string)
-///             .map_err(|_| UuidValidationError::InvalidUuid)?;
+///             .map_err(|_| ValidationError::new_custom(UuidValidationError::InvalidUuid))?;
 ///
 ///         Ok(())
 ///     }
@@ -44,6 +46,7 @@ use serde_json::Value;
 /// assert!(validator.validate(&incorrect_uuid).is_err());
 /// assert!(validator.validate(&correct_uuid).is_ok());
 /// ```
+#[typetag::serde(tag = "custom")]
 pub trait Validator {
     fn validate(&self, value: &Value) -> Result<(), ValidationError>;
 }

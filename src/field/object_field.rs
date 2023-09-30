@@ -1,15 +1,12 @@
 use crate::errors::validation_error::ValidationError;
 use crate::field::Field;
-use crate::Validator;
+use crate::{Validator, validator_impl};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::hash::Hash;
-
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ObjectField(HashMap<String, Field>);
 
 impl<const N: usize> From<[(String, Field); N]> for ObjectField {
@@ -30,6 +27,7 @@ impl<const N: usize> From<[(&str, Field); N]> for ObjectField {
     }
 }
 
+#[validator_impl]
 impl Validator for ObjectField {
     fn validate(&self, value: &Value) -> Result<(), ValidationError> {
         let Value::Object(map) = value else {

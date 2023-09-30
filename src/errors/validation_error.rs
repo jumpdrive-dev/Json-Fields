@@ -9,15 +9,24 @@ pub enum ValidationError {
     #[error("Missing key in object: {0}")]
     MissingKeyInObject(String),
 
+    #[error("Not a string")]
+    NotAString,
+
     #[error("Custom validation error: {0}")]
     Custom(Box<dyn Error>),
 }
 
-impl<T> From<T> for ValidationError
-where
-    T: Error + 'static,
-{
-    fn from(value: T) -> Self {
-        ValidationError::Custom(Box::new(value))
+impl ValidationError {
+    pub fn new_custom(error: impl Error + 'static) -> Self {
+        ValidationError::Custom(Box::new(error))
     }
 }
+
+// impl<T> From<T> for ValidationError
+// where
+//     T: Error + 'static,
+// {
+//     fn from(value: T) -> Self {
+//         ValidationError::Custom(Box::new(value))
+//     }
+// }

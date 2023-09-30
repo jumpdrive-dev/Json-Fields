@@ -4,6 +4,8 @@ mod schema;
 pub(crate) mod traits;
 
 pub use traits::validator::Validator;
+pub use typetag::serde as validator_impl;
+pub use serde::{Serialize, Deserialize};
 
 #[cfg(test)]
 mod tests {
@@ -11,6 +13,7 @@ mod tests {
     use crate::field::Field;
     use crate::schema::Schema;
     use serde_json::json;
+    use crate::Validator;
 
     #[test]
     fn main() {
@@ -21,10 +24,8 @@ mod tests {
         dbg!(&schema);
 
         let json = json!("Hello world");
+        let validation_result = schema.validate(&json);
 
-        // dbg!(&field);
-        //
-        // let schema: Schema = field.into();
-        // dbg!(&schema);
+        assert!(validation_result.is_ok());
     }
 }
