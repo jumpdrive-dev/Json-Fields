@@ -2,6 +2,7 @@ pub mod errors;
 pub mod field;
 mod schema;
 pub(crate) mod traits;
+pub mod migration;
 
 pub use traits::validator::Validator;
 pub use typetag::serde as validator_impl;

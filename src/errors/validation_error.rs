@@ -12,6 +12,15 @@ pub enum ValidationError {
     #[error("Not a string")]
     NotAString,
 
+    #[error("Expected a filled string, but got an empty one")]
+    StringNotFilled,
+
+    #[error("Expected a string with a minimum length of {0}, but got a length of {1}")]
+    StringNotMinLength(usize, usize),
+
+    #[error("Expected a string with max length of {0}, but a length of {1}")]
+    StringExceedsMaxLength(usize, usize),
+
     #[error("Custom validation error: {0}")]
     Custom(Box<dyn Error>),
 }
