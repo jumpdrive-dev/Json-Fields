@@ -1,8 +1,8 @@
+use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde::de::{Error, Visitor};
-use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq)]
@@ -87,11 +87,10 @@ impl JsonPath {
                 Value::String(_) => return Err(JsonPathError::CannotMatchOnAString),
                 Value::Array(list) => {
                     if part.starts_with('<') {
-                        let n_back: usize = part.replace('<', "")
-                            .parse()
-                            .unwrap_or(1);
+                        let n_back: usize = part.replace('<', "").parse().unwrap_or(1);
 
-                        current = list.iter()
+                        current = list
+                            .iter()
                             .nth_back(n_back - 1)
                             .ok_or(JsonPathError::NoLastItem)?;
 
@@ -99,17 +98,15 @@ impl JsonPath {
                     }
 
                     if part.starts_with('>') {
-                        let n_front: usize = part.replace('>', "")
-                            .parse()
-                            .unwrap_or(1);
+                        let n_front: usize = part.replace('>', "").parse().unwrap_or(1);
 
-                        current = list.get(n_front - 1)
-                            .ok_or(JsonPathError::NoFirstItem)?;
+                        current = list.get(n_front - 1).ok_or(JsonPathError::NoFirstItem)?;
 
                         continue;
                     }
 
-                    let index: usize = part.parse()
+                    let index: usize = part
+                        .parse()
                         .map_err(|_| JsonPathError::NotAnIndex(part.to_string()))?;
 
                     let Some(value) = list.get(index) else {
@@ -143,11 +140,10 @@ impl JsonPath {
                 Value::String(_) => return Err(JsonPathError::CannotMatchOnAString),
                 Value::Array(list) => {
                     if part.starts_with('<') {
-                        let n_back: usize = part.replace('<', "")
-                            .parse()
-                            .unwrap_or(1);
+                        let n_back: usize = part.replace('<', "").parse().unwrap_or(1);
 
-                        current = list.iter_mut()
+                        current = list
+                            .iter_mut()
                             .nth_back(n_back - 1)
                             .ok_or(JsonPathError::NoLastItem)?;
 
@@ -155,17 +151,17 @@ impl JsonPath {
                     }
 
                     if part.starts_with('>') {
-                        let n_front: usize = part.replace('>', "")
-                            .parse()
-                            .unwrap_or(1);
+                        let n_front: usize = part.replace('>', "").parse().unwrap_or(1);
 
-                        current = list.get_mut(n_front - 1)
+                        current = list
+                            .get_mut(n_front - 1)
                             .ok_or(JsonPathError::NoFirstItem)?;
 
                         continue;
                     }
 
-                    let index: usize = part.parse()
+                    let index: usize = part
+                        .parse()
                         .map_err(|_| JsonPathError::NotAnIndex(part.to_string()))?;
 
                     let Some(value) = list.get_mut(index) else {
@@ -189,9 +185,9 @@ impl JsonPath {
 }
 
 impl FromIterator<String> for JsonPath {
-    fn from_iter<T: IntoIterator<Item=String>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
         Self {
-            parts: iter.into_iter().collect()
+            parts: iter.into_iter().collect(),
         }
     }
 }
@@ -199,15 +195,16 @@ impl FromIterator<String> for JsonPath {
 impl<const N: usize> From<[&str; N]> for JsonPath {
     fn from(value: [&str; N]) -> Self {
         Self {
-            parts: value.iter()
-                .map(|value| value.to_string())
-                .collect()
+            parts: value.iter().map(|value| value.to_string()).collect(),
         }
     }
 }
 
 impl Serialize for JsonPath {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         serializer.serialize_str(&self.to_string())
     }
 }
@@ -221,19 +218,26 @@ impl<'de> Visitor<'de> for JsonPathVisitor {
         write!(f, "a json path")
     }
 
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E> where E: Error {
-        JsonPath::from_str(v)
-            .map_err(|err| E::custom(err.to_string()))
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        JsonPath::from_str(v).map_err(|err| E::custom(err.to_string()))
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> where E: Error {
-        JsonPath::from_str(&v)
-            .map_err(|err| E::custom(err.to_string()))
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        JsonPath::from_str(&v).map_err(|err| E::custom(err.to_string()))
     }
 }
 
 impl<'de> Deserialize<'de> for JsonPath {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         deserializer.deserialize_string(JsonPathVisitor)
     }
 }
@@ -261,31 +265,42 @@ impl FromStr for JsonPath {
         }
 
         Ok(Self {
-            parts: parts
-                .map(|str| str.to_string())
-                .collect(),
+            parts: parts.map(|str| str.to_string()).collect(),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-    use serde_json::json;
     use crate::migration::json_path::{JsonPath, JsonPathError};
+    use serde_json::json;
+    use std::str::FromStr;
 
     #[test]
     fn path_can_be_parsed_from_str() {
         assert_eq!(JsonPath::from_str("$"), Ok(JsonPath { parts: vec![] }));
-        assert_eq!(JsonPath::from_str("$.a"), Ok(JsonPath { parts: vec!["a".to_string()] }));
-        assert_eq!(JsonPath::from_str("$.b.0"), Ok(JsonPath { parts: vec!["b".to_string(), "0".to_string()] }));
+        assert_eq!(
+            JsonPath::from_str("$.a"),
+            Ok(JsonPath {
+                parts: vec!["a".to_string()]
+            })
+        );
+        assert_eq!(
+            JsonPath::from_str("$.b.0"),
+            Ok(JsonPath {
+                parts: vec!["b".to_string(), "0".to_string()]
+            })
+        );
     }
 
     #[test]
     fn path_requires_a_root() {
         assert_eq!(JsonPath::from_str(""), Err(JsonPathError::FailedToParse));
         assert_eq!(JsonPath::from_str("a"), Err(JsonPathError::FailedToParse));
-        assert_eq!(JsonPath::from_str(".b.0"), Err(JsonPathError::FailedToParse));
+        assert_eq!(
+            JsonPath::from_str(".b.0"),
+            Err(JsonPathError::FailedToParse)
+        );
     }
 
     #[test]
@@ -294,9 +309,7 @@ mod tests {
             "a": 10,
         });
 
-        let resolved_value = JsonPath::from_str("$.a")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.a").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(10)));
     }
@@ -311,9 +324,7 @@ mod tests {
             },
         });
 
-        let resolved_value = JsonPath::from_str("$.a.b.c")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.a.b.c").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(10)));
     }
@@ -324,59 +335,49 @@ mod tests {
             "a": 10,
         });
 
-        let resolved_value = JsonPath::from_str("$.b")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.b").unwrap().resolve(&value);
 
-        assert_eq!(resolved_value, Err(JsonPathError::KeyNotFound("b".to_string())));
+        assert_eq!(
+            resolved_value,
+            Err(JsonPathError::KeyNotFound("b".to_string()))
+        );
     }
 
     #[test]
     fn single_path_of_array_is_resolved_correctly() {
-        let value = json!([
-            10
-        ]);
+        let value = json!([10]);
 
-        let resolved_value = JsonPath::from_str("$.0")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.0").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(10)));
     }
 
     #[test]
     fn invalid_index_returns_an_err() {
-        let value = json!([
-            10
-        ]);
+        let value = json!([10]);
 
-        let resolved_value = JsonPath::from_str("$.abc")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.abc").unwrap().resolve(&value);
 
-        assert_eq!(resolved_value, Err(JsonPathError::NotAnIndex("abc".to_string())));
+        assert_eq!(
+            resolved_value,
+            Err(JsonPathError::NotAnIndex("abc".to_string()))
+        );
     }
 
     #[test]
     fn missing_index_returns_an_err() {
-        let value = json!([
-            10
-        ]);
+        let value = json!([10]);
 
-        let resolved_value = JsonPath::from_str("$.1")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.1").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Err(JsonPathError::IndexNotFound(1)));
     }
 
     #[test]
     fn last_item_of_array_is_returned_correctly() {
-        let value = json!([ 1, 2, 3 ]);
+        let value = json!([1, 2, 3]);
 
-        let resolved_value = JsonPath::from_str("$.<")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.<").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(3)));
     }
@@ -385,42 +386,34 @@ mod tests {
     fn missing_last_index_of_array_returns_error() {
         let value = json!([]);
 
-        let resolved_value = JsonPath::from_str("$.<")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.<").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Err(JsonPathError::NoLastItem));
     }
 
     #[test]
     fn specific_item_back_of_array_is_returned_correctly() {
-        let value = json!([ 1, 2, 3 ]);
+        let value = json!([1, 2, 3]);
 
-        let resolved_value = JsonPath::from_str("$.<3")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.<3").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(1)));
     }
 
     #[test]
     fn first_item_of_array_is_returned_correctly() {
-        let value = json!([ 1, 2, 3 ]);
+        let value = json!([1, 2, 3]);
 
-        let resolved_value = JsonPath::from_str("$.>")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.>").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(1)));
     }
 
     #[test]
     fn specific_item_front_of_array_is_returned_correctly() {
-        let value = json!([ 1, 2, 3 ]);
+        let value = json!([1, 2, 3]);
 
-        let resolved_value = JsonPath::from_str("$.>3")
-            .unwrap()
-            .resolve(&value);
+        let resolved_value = JsonPath::from_str("$.>3").unwrap().resolve(&value);
 
         assert_eq!(resolved_value, Ok(&json!(3)));
     }

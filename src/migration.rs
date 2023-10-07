@@ -1,15 +1,15 @@
-use serde_json::Value;
-use thiserror::Error;
 use crate::migration::json_path::JsonPathError;
 use crate::migration::operation::Operation;
 use crate::migration::operation_kind::OperationKind;
+use serde_json::Value;
+use thiserror::Error;
 
 use crate::migration::set_path::{SetPath, SetPathError};
 
+mod json_path;
 pub mod operation;
 pub mod operation_kind;
 mod set_path;
-mod json_path;
 
 #[derive(Debug, Error)]
 pub enum MigrationError {
@@ -70,9 +70,8 @@ impl Migration {
 
                     match target_value {
                         Value::Array(array) => {
-                            let index = last
-                                .parse()
-                                .map_err(|_| MigrationError::NotAnIndex(last))?;
+                            let index =
+                                last.parse().map_err(|_| MigrationError::NotAnIndex(last))?;
 
                             array.remove(index);
                         }
@@ -95,12 +94,12 @@ impl Migration {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-    use serde_json::json;
     use crate::migration::json_path::JsonPath;
-    use crate::migration::Migration;
     use crate::migration::operation::Operation;
     use crate::migration::operation_kind::OperationKind;
+    use crate::migration::Migration;
+    use serde_json::json;
+    use std::str::FromStr;
 
     #[test]
     fn key_can_be_renamed() {
@@ -108,9 +107,12 @@ mod tests {
         let to = json!({ "b": 10 });
 
         let migration = Migration::with_operations([
-            Operation::new(JsonPath::from_str("$.a").unwrap(), OperationKind::Copy {
-                new_path: JsonPath::from_str("$.b").unwrap(),
-            }),
+            Operation::new(
+                JsonPath::from_str("$.a").unwrap(),
+                OperationKind::Copy {
+                    new_path: JsonPath::from_str("$.b").unwrap(),
+                },
+            ),
             Operation::new(JsonPath::from_str("$.a").unwrap(), OperationKind::Delete),
         ]);
 

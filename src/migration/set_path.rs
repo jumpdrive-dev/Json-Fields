@@ -1,8 +1,7 @@
-use std::mem;
-use serde_json::Value;
-use thiserror::Error;
 use crate::migration::json_path::{JsonPath, JsonPathError};
-
+use serde_json::Value;
+use std::mem;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -93,10 +92,10 @@ impl SetPath for Value {
 
 #[cfg(test)]
 mod tests {
-    
-    use serde_json::json;
+
     use crate::migration::json_path::JsonPath;
     use crate::migration::set_path::{SetPath, SetPathError};
+    use serde_json::json;
 
     #[test]
     fn root_can_be_replaced_by_value() {
@@ -132,9 +131,7 @@ mod tests {
 
     #[test]
     fn value_is_replaced_on_array_root_correctly() {
-        let mut target = json!([
-            5,
-        ]);
+        let mut target = json!([5,]);
 
         let result = target.set_path(&JsonPath::from(["0"]), json!(10));
 
@@ -144,12 +141,7 @@ mod tests {
 
     #[test]
     fn value_is_replaced_on_nested_array_correctly() {
-        let mut target = json!([
-            [
-                2,
-                5
-            ],
-        ]);
+        let mut target = json!([[2, 5],]);
 
         let result = target.set_path(&JsonPath::from(["0", "1"]), json!(10));
 
@@ -159,9 +151,7 @@ mod tests {
 
     #[test]
     fn cannot_replace_value_on_array_that_does_not_exist() {
-        let mut target = json!([
-            5,
-        ]);
+        let mut target = json!([5,]);
 
         let result = target.set_path(&JsonPath::from(["1"]), json!(10));
 

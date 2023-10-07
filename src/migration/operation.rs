@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::migration::json_path::JsonPath;
 use crate::migration::operation_kind::OperationKind;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

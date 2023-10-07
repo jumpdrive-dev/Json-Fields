@@ -1,8 +1,8 @@
 use crate::errors::validation_error::ValidationError;
-use crate::{Validator, validator_impl};
+use crate::{validator_impl, Validator};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt::{Debug, Formatter};
-use serde::{Deserialize, Serialize};
 
 /// Custom fields allow you to use your own validators within other fields, like an `ObjectField`
 /// as shown here:
@@ -80,16 +80,16 @@ impl Debug for CustomField {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::{Display, Formatter};
-    use std::str::FromStr;
-    use serde_json::{json, Value};
-    use thiserror::Error;
-    use uuid::Uuid;
-    use crate::{Deserialize, Serialize, Validator, validator_impl};
     use crate::errors::validation_error::ValidationError;
     use crate::field::custom_field::CustomField;
-    use crate::field::Field;
     use crate::field::object_field::ObjectField;
+    use crate::field::Field;
+    use crate::{validator_impl, Deserialize, Serialize, Validator};
+    use serde_json::{json, Value};
+    use std::fmt::{Display, Formatter};
+    use std::str::FromStr;
+    use thiserror::Error;
+    use uuid::Uuid;
 
     #[derive(Debug, Error)]
     struct StrError(pub String);
@@ -115,11 +115,14 @@ mod tests {
     impl Validator for UuidValidator {
         fn validate(&self, value: &Value) -> Result<(), ValidationError> {
             let Value::String(string) = value else {
-                return Err(ValidationError::new_custom(StrError::from_str("not a string").unwrap()));
+                return Err(ValidationError::new_custom(
+                    StrError::from_str("not a string").unwrap(),
+                ));
             };
 
-            Uuid::from_str(string)
-                .map_err(|_| ValidationError::new_custom(StrError::from_str("invalid uuid").unwrap()))?;
+            Uuid::from_str(string).map_err(|_| {
+                ValidationError::new_custom(StrError::from_str("invalid uuid").unwrap())
+            })?;
 
             Ok(())
         }
@@ -132,11 +135,15 @@ mod tests {
     impl Validator for ExactStringValidator {
         fn validate(&self, value: &Value) -> Result<(), ValidationError> {
             let Value::String(string) = value else {
-                return Err(ValidationError::new_custom(StrError::from_str("not a string").unwrap()));
+                return Err(ValidationError::new_custom(
+                    StrError::from_str("not a string").unwrap(),
+                ));
             };
 
             if string != &self.0 {
-                return Err(ValidationError::new_custom(StrError::from_str("not a").unwrap()));
+                return Err(ValidationError::new_custom(
+                    StrError::from_str("not a").unwrap(),
+                ));
             }
 
             Ok(())
@@ -195,9 +202,10 @@ mod tests {
     fn custom_field_can_is_serialized_correctly_from_within_another_field() {
         let exact_validator = ExactStringValidator("a".to_string());
 
-        let object_field = Field::Object(ObjectField::from([
-            ("uuid", Field::CustomValidator(CustomField::new(exact_validator)))
-        ]));
+        let object_field = Field::Object(ObjectField::from([(
+            "uuid",
+            Field::CustomValidator(CustomField::new(exact_validator)),
+        )]));
 
         let string_result = serde_json::to_string(&object_field);
         assert!(string_result.is_ok());

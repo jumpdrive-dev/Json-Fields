@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::errors::validation_error::ValidationError;
-use crate::{Validator, validator_impl};
+use crate::{validator_impl, Validator};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -24,13 +24,19 @@ impl Validator for StringField {
 
         if let Some(min_length) = self.min_length {
             if string.len() < min_length {
-                return Err(ValidationError::StringNotMinLength(min_length, string.len()));
+                return Err(ValidationError::StringNotMinLength(
+                    min_length,
+                    string.len(),
+                ));
             }
         }
 
         if let Some(max_length) = self.max_length {
             if string.len() > max_length {
-                return Err(ValidationError::StringExceedsMaxLength(max_length, string.len()));
+                return Err(ValidationError::StringExceedsMaxLength(
+                    max_length,
+                    string.len(),
+                ));
             }
         }
 
@@ -40,10 +46,10 @@ impl Validator for StringField {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
     use crate::errors::validation_error::ValidationError;
     use crate::field::string_field::StringField;
     use crate::Validator;
+    use serde_json::json;
 
     #[test]
     fn filled_check_is_checked_correctly() {
@@ -74,7 +80,10 @@ mod tests {
 
         let failure = string_field.validate(&json!("ab"));
 
-        assert!(matches!(failure, Err(ValidationError::StringNotMinLength(3, 2))));
+        assert!(matches!(
+            failure,
+            Err(ValidationError::StringNotMinLength(3, 2))
+        ));
     }
 
     #[test]
@@ -92,6 +101,9 @@ mod tests {
 
         let failure = string_field.validate(&json!("abcdefg"));
 
-        assert!(matches!(failure, Err(ValidationError::StringExceedsMaxLength(6, 7))));
+        assert!(matches!(
+            failure,
+            Err(ValidationError::StringExceedsMaxLength(6, 7))
+        ));
     }
 }

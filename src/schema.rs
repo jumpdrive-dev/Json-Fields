@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
 use crate::errors::validation_error::ValidationError;
 use crate::field::Field;
+use crate::{validator_impl, Validator};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::{Validator, validator_impl};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Schema {
