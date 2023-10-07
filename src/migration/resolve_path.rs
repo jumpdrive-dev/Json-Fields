@@ -17,22 +17,30 @@ pub enum PathResolveError {
     IndexNotFound(usize),
 
     #[error("Expected either an object or an array, got a null value")]
-    CannotMathOnANullValue,
+    CannotMatchOnANullValue,
 
     #[error("Expected either an object or an array, got a boolean")]
-    CannotMathOnABoolean,
+    CannotMatchOnABoolean,
 
     #[error("Expected either an object or an array, got a number")]
-    CannotMathOnANumber,
+    CannotMatchOnANumber,
 
     #[error("Expected either an object or an array, got a string")]
-    CannotMathOnAString,
+    CannotMatchOnAString,
+
+    #[error("The target array is empty and does not contain a first item")]
+    NoFirstItem,
+
+    #[error("The target array is empty and does not contain a last item")]
+    NoLastItem,
 }
 
 pub fn resolve_path(path: impl Into<String>, value: &Value) -> Result<&Value, PathResolveError> {
     let path = path.into();
-    let mut parts = path.split('.');
+    resolve_path_iter(path.split('.'), value)
+}
 
+pub fn resolve_path_iter<'a, 'b>(mut parts: impl Iterator<Item = &'b str>, value: &'a Value) -> Result<&'a Value, PathResolveError> {
     if !matches!(parts.next(), Some("$")) {
         return Err(PathResolveError::NoRoot);
     }
@@ -41,11 +49,35 @@ pub fn resolve_path(path: impl Into<String>, value: &Value) -> Result<&Value, Pa
 
     while let Some(part) = parts.next() {
         match current {
-            Value::Null => return Err(PathResolveError::CannotMathOnANullValue),
-            Value::Bool(_) => return Err(PathResolveError::CannotMathOnABoolean),
-            Value::Number(_) => return Err(PathResolveError::CannotMathOnANumber),
-            Value::String(_) => return Err(PathResolveError::CannotMathOnAString),
+            Value::Null => return Err(PathResolveError::CannotMatchOnANullValue),
+            Value::Bool(_) => return Err(PathResolveError::CannotMatchOnABoolean),
+            Value::Number(_) => return Err(PathResolveError::CannotMatchOnANumber),
+            Value::String(_) => return Err(PathResolveError::CannotMatchOnAString),
             Value::Array(list) => {
+                if part.starts_with('<') {
+                    let n_back: usize = part.replace('<', "")
+                        .parse()
+                        .unwrap_or(1);
+
+                    current = list.iter()
+                        .nth_back(n_back - 1)
+                        .ok_or(PathResolveError::NoLastItem)?;
+
+                    continue;
+                }
+
+                if part.starts_with('>') {
+                    let n_front: usize = part.replace('>', "")
+                        .parse()
+                        .unwrap_or(1);
+
+                    current = list.iter()
+                        .nth(n_front - 1)
+                        .ok_or(PathResolveError::NoFirstItem)?;
+
+                    continue;
+                }
+
                 let index: usize = part.parse()
                     .map_err(|_| PathResolveError::NotAnIndex(part.to_string()))?;
 
@@ -57,6 +89,71 @@ pub fn resolve_path(path: impl Into<String>, value: &Value) -> Result<&Value, Pa
             }
             Value::Object(map) => {
                 let Some(value) = map.get(part) else {
+                    return Err(PathResolveError::KeyNotFound(part.to_string()));
+                };
+
+                current = value;
+            }
+        }
+    }
+
+    Ok(current)
+}
+
+pub fn resolve_path_mut(path: impl Into<String>, value: &mut Value) -> Result<&mut Value, PathResolveError> {
+    let path = path.into();
+    resolve_path_iter_mut(path.split('.'), value)
+}
+
+pub fn resolve_path_iter_mut<'a, 'b>(mut parts: impl Iterator<Item = &'b str>, value: &'a mut Value) -> Result<&'a mut Value, PathResolveError> {
+    if !matches!(parts.next(), Some("$")) {
+        return Err(PathResolveError::NoRoot);
+    }
+
+    let mut current = value;
+
+    while let Some(part) = parts.next() {
+        match current {
+            Value::Null => return Err(PathResolveError::CannotMatchOnANullValue),
+            Value::Bool(_) => return Err(PathResolveError::CannotMatchOnABoolean),
+            Value::Number(_) => return Err(PathResolveError::CannotMatchOnANumber),
+            Value::String(_) => return Err(PathResolveError::CannotMatchOnAString),
+            Value::Array(list) => {
+                if part.starts_with('<') {
+                    let n_back: usize = part.replace('<', "")
+                        .parse()
+                        .unwrap_or(1);
+
+                    current = list.iter_mut()
+                        .nth_back(n_back - 1)
+                        .ok_or(PathResolveError::NoLastItem)?;
+
+                    continue;
+                }
+
+                if part.starts_with('>') {
+                    let n_front: usize = part.replace('>', "")
+                        .parse()
+                        .unwrap_or(1);
+
+                    current = list.iter_mut()
+                        .nth(n_front - 1)
+                        .ok_or(PathResolveError::NoFirstItem)?;
+
+                    continue;
+                }
+
+                let index: usize = part.parse()
+                    .map_err(|_| PathResolveError::NotAnIndex(part.to_string()))?;
+
+                let Some(value) = list.get_mut(index) else {
+                    return Err(PathResolveError::IndexNotFound(index));
+                };
+
+                current = value;
+            }
+            Value::Object(map) => {
+                let Some(value) = map.get_mut(part) else {
                     return Err(PathResolveError::KeyNotFound(part.to_string()));
                 };
 
@@ -152,5 +249,50 @@ mod tests {
         let resolved_value = resolve_path("$.1", &value);
 
         assert_eq!(resolved_value, Err(PathResolveError::IndexNotFound(1)));
+    }
+
+    #[test]
+    fn last_item_of_array_is_returned_correctly() {
+        let value = json!([ 1, 2, 3 ]);
+
+        let resolved_value = resolve_path("$.<", &value);
+
+        assert_eq!(resolved_value, Ok(&json!(3)));
+    }
+
+    #[test]
+    fn missing_last_index_of_array_returns_error() {
+        let value = json!([]);
+
+        let resolved_value = resolve_path("$.<", &value);
+
+        assert_eq!(resolved_value, Err(PathResolveError::NoLastItem));
+    }
+
+    #[test]
+    fn specific_item_back_of_array_is_returned_correctly() {
+        let value = json!([ 1, 2, 3 ]);
+
+        let resolved_value = resolve_path("$.<3", &value);
+
+        assert_eq!(resolved_value, Ok(&json!(1)));
+    }
+
+    #[test]
+    fn first_item_of_array_is_returned_correctly() {
+        let value = json!([ 1, 2, 3 ]);
+
+        let resolved_value = resolve_path("$.>", &value);
+
+        assert_eq!(resolved_value, Ok(&json!(1)));
+    }
+
+    #[test]
+    fn specific_item_front_of_array_is_returned_correctly() {
+        let value = json!([ 1, 2, 3 ]);
+
+        let resolved_value = resolve_path("$.>3", &value);
+
+        assert_eq!(resolved_value, Ok(&json!(3)));
     }
 }

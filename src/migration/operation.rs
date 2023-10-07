@@ -1,15 +1,20 @@
+use serde::{Deserialize, Serialize};
 use crate::migration::operation_kind::OperationKind;
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Operation {
-    target_path: String,
-    kind: OperationKind,
+    pub target: String,
+
+    #[serde(flatten)]
+    pub op: OperationKind,
 }
 
 impl Operation {
     pub fn new(target_path: impl Into<String>, kind: OperationKind) -> Self {
         Self {
-            target_path: target_path.into(),
-            kind,
+            target: target_path.into(),
+            op: kind,
         }
     }
 }

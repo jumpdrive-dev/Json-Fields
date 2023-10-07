@@ -1,9 +1,23 @@
 use serde_json::Value;
+use thiserror::Error;
 use crate::migration::operation::Operation;
+use crate::migration::operation_kind::OperationKind;
+use crate::migration::resolve_path::{PathResolveError, resolve_path, resolve_path_mut};
+use crate::migration::set_path::{set_path, SetPathError};
 
 pub mod operation;
 pub mod operation_kind;
-pub mod resolve_path;
+mod resolve_path;
+mod set_path;
+
+#[derive(Debug, Error)]
+pub enum MigrationError {
+    #[error("Failed to resolve path in migration: {0}")]
+    PathError(#[from] PathResolveError),
+
+    #[error("Failed to set: {0}")]
+    SetError(#[from] SetPathError),
+}
 
 pub struct Migration {
     operations: Vec<Operation>,
@@ -30,8 +44,20 @@ impl Migration {
         self.operations.extend(operations);
     }
 
-    pub fn migrate(&self, value: Value) -> Result<Value, ()> {
-        todo!()
+    pub fn migrate(&self, value: Value) -> Result<Value, MigrationError> {
+        let mut working_copy = value.clone();
+
+        for op in &self.operations {
+            match &op.op {
+                OperationKind::Delete => {}
+                OperationKind::Copy { new_path } => {
+                    let target_value = resolve_path(&op.target, &working_copy)?.clone();
+                    set_path(new_path, &mut working_copy, target_value)?;
+                }
+            }
+        }
+
+        Ok(working_copy)
     }
 }
 
@@ -51,6 +77,7 @@ mod tests {
             Operation::new("$.a", OperationKind::Copy {
                 new_path: "$.b".into(),
             }),
+            Operation::new("$.a", OperationKind::Delete),
         ]);
 
         let renamed = migration.migrate(from);
