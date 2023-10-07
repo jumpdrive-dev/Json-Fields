@@ -1,13 +1,14 @@
 use std::mem;
 use serde_json::Value;
 use thiserror::Error;
+use crate::migration::json_path::{JsonPath, JsonPathError};
 use crate::migration::resolve_path::{PathResolveError, resolve_path_iter, resolve_path_iter_mut, resolve_path_mut};
 
 #[derive(Debug, Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum SetPathError {
     #[error("Failed to resolve path")]
-    PathError(#[from] PathResolveError),
+    PathError(#[from] JsonPathError),
 
     #[error("Cannot set the index of an array that does not exist. Use push '$.<' instead")]
     CannotReplaceMissingIndex,
@@ -31,86 +32,77 @@ pub enum SetPathError {
     CannotSetOnAString,
 }
 
-pub fn set_path(path: impl Into<String>, target: &mut Value, set: Value) -> Result<(), SetPathError> {
-    let path = path.into();
-    let mut parts: Vec<&str> = path.split('.').collect();
+pub trait SetPath {
+    fn set_path(&mut self, path: &JsonPath, value: Value) -> Result<(), SetPathError>;
+}
 
-    let last_index = parts.len() - 1;
-    let iterator = parts.into_iter();
+impl SetPath for Value {
+    fn set_path(&mut self, path: &JsonPath, value: Value) -> Result<(), SetPathError> {
+        // let mut parts: Vec<&str> = path.split('.').collect();
 
-    let resolved = if last_index == 0 {
-        resolve_path_mut("$", target)?
-    } else {
-        let iter = iterator.clone().take(last_index);
-        resolve_path_iter_mut(iter, target)?
-    };
+        let last = path.clone_last();
+        let parent = path.parent();
 
-    let last = iterator.last()
-        .ok_or(SetPathError::EmptyPath)?;
+        let Some(parent) = parent else {
+            let _ = mem::replace(self, value);
+            return Ok(());
+        };
 
-    if last.is_empty() {
-        return Err(SetPathError::EmptyPath);
-    }
+        let resolved = parent.resolve_mut(self)?;
+        let last = last.expect("Should never be None here");
 
-    if last == "$" {
-        let _ = mem::replace(resolved, set);
-        return Ok(());
-    }
+        match resolved {
+            Value::Null => return Err(SetPathError::CannotSetOnANullValue),
+            Value::Bool(_) => return Err(SetPathError::CannotSetOnABoolean),
+            Value::Number(_) => return Err(SetPathError::CannotSetOnANumber),
+            Value::String(_) => return Err(SetPathError::CannotSetOnAString),
+            Value::Array(array) => {
+                if last.starts_with('<') {
+                    array.push(value);
+                    return Ok(());
+                }
 
-    match resolved {
-        Value::Null => return Err(SetPathError::CannotSetOnANullValue),
-        Value::Bool(_) => return Err(SetPathError::CannotSetOnABoolean),
-        Value::Number(_) => return Err(SetPathError::CannotSetOnANumber),
-        Value::String(_) => return Err(SetPathError::CannotSetOnAString),
-        Value::Array(array) => {
-            if last.starts_with('<') {
-                array.push(set);
-                return Ok(());
+                if last.starts_with('>') {
+                    let mut new_vec = Vec::new();
+                    new_vec.push(value);
+
+                    new_vec.extend(array.iter().map(|v| v.clone()));
+                    let _ = mem::replace(array, new_vec);
+
+                    return Ok(());
+                }
+
+                let index: usize = last
+                    .parse()
+                    .map_err(|_| SetPathError::NotAnIndex(last.to_string()))?;
+
+                if array.get(index).is_none() {
+                    return Err(SetPathError::CannotReplaceMissingIndex);
+                }
+
+                array[index] = value;
             }
-
-            if last.starts_with('>') {
-                let mut new_vec = Vec::new();
-                new_vec.push(set);
-
-                new_vec.extend(array.iter().map(|v| v.clone()));
-                let _ = mem::replace(array, new_vec);
-
-                return Ok(());
+            Value::Object(map) => {
+                map.insert(last.to_string(), value);
             }
-
-            let index: usize = last
-                .parse()
-                .map_err(|_| SetPathError::NotAnIndex(last.to_string()))?;
-
-            if array.get(index).is_none() {
-                return Err(SetPathError::CannotReplaceMissingIndex);
-            }
-
-            array[index] = set;
         }
-        Value::Object(map) => {
-            map.insert(last.to_string(), set);
-        }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
     use serde_json::json;
-    use crate::migration::set_path::{set_path, SetPathError};
-
-    #[test]
-    fn empty_path_returns_err() {
-        assert_eq!(set_path("", &mut json!("string"), json!(10)), Err(SetPathError::EmptyPath));
-    }
+    use crate::migration::json_path::JsonPath;
+    use crate::migration::set_path::{SetPath, SetPathError};
 
     #[test]
     fn root_can_be_replaced_by_value() {
         let mut target = json!("String");
 
-        let result = set_path("$", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from([]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!(10));
@@ -120,7 +112,7 @@ mod tests {
     fn value_is_set_on_object_root_correctly() {
         let mut target = json!({});
 
-        let result = set_path("$.a", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from(["a"]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!({ "a": 10 }));
@@ -132,7 +124,7 @@ mod tests {
             "a": {}
         });
 
-        let result = set_path("$.a.b", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from(["a", "b"]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!({ "a": { "b": 10 } }));
@@ -144,7 +136,7 @@ mod tests {
             5,
         ]);
 
-        let result = set_path("$.0", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from(["0"]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!([10]));
@@ -159,7 +151,7 @@ mod tests {
             ],
         ]);
 
-        let result = set_path("$.0.1", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from(["0", "1"]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!([[2, 10]]));
@@ -171,7 +163,7 @@ mod tests {
             5,
         ]);
 
-        let result = set_path("$.1", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from(["1"]), json!(10));
 
         assert_eq!(result, Err(SetPathError::CannotReplaceMissingIndex));
         assert_eq!(target, json!([5]));
@@ -181,7 +173,7 @@ mod tests {
     fn value_is_pushed_to_back_onto_array_correctly() {
         let mut target = json!([5]);
 
-        let result = set_path("$.<", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from(["<"]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!([5, 10]));
@@ -191,7 +183,7 @@ mod tests {
     fn value_is_pushed_to_front_onto_array_correctly() {
         let mut target = json!([5]);
 
-        let result = set_path("$.>", &mut target, json!(10));
+        let result = target.set_path(&JsonPath::from([">"]), json!(10));
 
         assert_eq!(result, Ok(()));
         assert_eq!(target, json!([10, 5]));
