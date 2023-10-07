@@ -18,7 +18,7 @@ impl Validator for StringField {
         };
 
         let require_filled = self.require_filled.unwrap_or(false);
-        if require_filled && string.len() == 0 {
+        if require_filled && string.is_empty() {
             return Err(ValidationError::StringNotFilled);
         }
 

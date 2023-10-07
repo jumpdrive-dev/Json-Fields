@@ -3,12 +3,11 @@ use thiserror::Error;
 use crate::migration::json_path::JsonPathError;
 use crate::migration::operation::Operation;
 use crate::migration::operation_kind::OperationKind;
-use crate::migration::resolve_path::{PathResolveError, resolve_path, resolve_path_mut};
+
 use crate::migration::set_path::{SetPath, SetPathError};
 
 pub mod operation;
 pub mod operation_kind;
-mod resolve_path;
 mod set_path;
 mod json_path;
 
@@ -27,15 +26,14 @@ pub enum MigrationError {
     NotAnIndex(String),
 }
 
+#[derive(Default)]
 pub struct Migration {
     operations: Vec<Operation>,
 }
 
 impl Migration {
     pub fn new() -> Self {
-        Self {
-            operations: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn with_operations(operations: impl IntoIterator<Item = Operation>) -> Self {

@@ -38,16 +38,14 @@ pub enum JsonPathError {
     NoLastItem,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct JsonPath {
     parts: Vec<String>,
 }
 
 impl JsonPath {
     pub fn new() -> Self {
-        Self {
-            parts: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn push(&mut self, part: impl Into<String>) {
@@ -77,11 +75,11 @@ impl JsonPath {
         Some(clone)
     }
 
-    pub fn resolve<'s, 'a>(&'s self, value: &'a Value) -> Result<&'a Value, JsonPathError> {
+    pub fn resolve<'a>(&self, value: &'a Value) -> Result<&'a Value, JsonPathError> {
         let mut current = value;
-        let mut iterator = self.parts.iter();
+        let iterator = self.parts.iter();
 
-        while let Some(part) = iterator.next() {
+        for part in iterator {
             match current {
                 Value::Null => return Err(JsonPathError::CannotMatchOnANullValue),
                 Value::Bool(_) => return Err(JsonPathError::CannotMatchOnABoolean),
@@ -105,8 +103,7 @@ impl JsonPath {
                             .parse()
                             .unwrap_or(1);
 
-                        current = list.iter()
-                            .nth(n_front - 1)
+                        current = list.get(n_front - 1)
                             .ok_or(JsonPathError::NoFirstItem)?;
 
                         continue;
@@ -134,11 +131,11 @@ impl JsonPath {
         Ok(current)
     }
 
-    pub fn resolve_mut<'s, 'a>(&'s self, value: &'a mut Value) -> Result<&'a mut Value, JsonPathError> {
+    pub fn resolve_mut<'a>(&self, value: &'a mut Value) -> Result<&'a mut Value, JsonPathError> {
         let mut current = value;
-        let mut iterator = self.parts.iter();
+        let iterator = self.parts.iter();
 
-        while let Some(part) = iterator.next() {
+        for part in iterator {
             match current {
                 Value::Null => return Err(JsonPathError::CannotMatchOnANullValue),
                 Value::Bool(_) => return Err(JsonPathError::CannotMatchOnABoolean),
@@ -162,8 +159,7 @@ impl JsonPath {
                             .parse()
                             .unwrap_or(1);
 
-                        current = list.iter_mut()
-                            .nth(n_front - 1)
+                        current = list.get_mut(n_front - 1)
                             .ok_or(JsonPathError::NoFirstItem)?;
 
                         continue;

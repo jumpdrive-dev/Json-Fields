@@ -2,7 +2,7 @@ use std::mem;
 use serde_json::Value;
 use thiserror::Error;
 use crate::migration::json_path::{JsonPath, JsonPathError};
-use crate::migration::resolve_path::{PathResolveError, resolve_path_iter, resolve_path_iter_mut, resolve_path_mut};
+
 
 #[derive(Debug, Error)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -66,7 +66,7 @@ impl SetPath for Value {
                     let mut new_vec = Vec::new();
                     new_vec.push(value);
 
-                    new_vec.extend(array.iter().map(|v| v.clone()));
+                    new_vec.extend(array.iter().cloned());
                     let _ = mem::replace(array, new_vec);
 
                     return Ok(());
@@ -93,7 +93,7 @@ impl SetPath for Value {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    
     use serde_json::json;
     use crate::migration::json_path::JsonPath;
     use crate::migration::set_path::{SetPath, SetPathError};

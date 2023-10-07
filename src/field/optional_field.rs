@@ -11,7 +11,7 @@ pub struct OptionalField {
 
 #[validator_impl]
 impl Validator for OptionalField {
-    fn validate(&self, value: &Value) -> Result<(), ValidationError> {
+    fn validate(&self, _value: &Value) -> Result<(), ValidationError> {
         todo!()
     }
 }

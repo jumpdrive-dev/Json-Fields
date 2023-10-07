@@ -173,7 +173,7 @@ mod tests {
         let deserialize_result = serde_json::from_str(&string);
         assert!(deserialize_result.is_ok());
 
-        let uuid_validator: UuidValidator = deserialize_result.unwrap();
+        let _uuid_validator: UuidValidator = deserialize_result.unwrap();
     }
 
     #[test]
@@ -188,7 +188,7 @@ mod tests {
         let deserialize_result = serde_json::from_str(&string);
         assert!(deserialize_result.is_ok());
 
-        let deserialized_validator: ExactStringValidator = deserialize_result.unwrap();
+        let _deserialized_validator: ExactStringValidator = deserialize_result.unwrap();
     }
 
     #[test]
@@ -207,6 +207,6 @@ mod tests {
         let deserialize_result = serde_json::from_str(&string);
         assert!(deserialize_result.is_ok());
 
-        let deserialized_field: Field = deserialize_result.unwrap();
+        let _deserialized_field: Field = deserialize_result.unwrap();
     }
 }

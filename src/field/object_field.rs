@@ -3,7 +3,7 @@ use crate::field::Field;
 use crate::{Validator, validator_impl};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::hash::Hash;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
