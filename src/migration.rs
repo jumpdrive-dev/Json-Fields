@@ -1,6 +1,7 @@
+use serde::Serialize;
 use crate::migration::json_path::JsonPathError;
 use crate::migration::operation::Operation;
-use crate::migration::operation_kind::OperationKind;
+use crate::migration::operation_kind::{OperationError, OperationKind};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -13,20 +14,11 @@ mod set_path;
 
 #[derive(Debug, Error)]
 pub enum MigrationError {
-    #[error("Failed to resolve path in migration: {0}")]
-    PathError(#[from] JsonPathError),
-
-    #[error("Failed to set path in migration: {0}")]
-    SetError(#[from] SetPathError),
-
-    #[error("Cannot delete a value on {0}")]
-    CannotDeleteOn(Value),
-
-    #[error("Expected an index to, but got {0} instead")]
-    NotAnIndex(String),
+    #[error("Failed to perform operation: {0}")]
+    OperationError(#[from] OperationError),
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct Migration {
     operations: Vec<Operation>,
 }
@@ -53,39 +45,8 @@ impl Migration {
     pub fn migrate(&self, value: Value) -> Result<Value, MigrationError> {
         let mut working_copy = value.clone();
 
-        for op in &self.operations {
-            match &op.op {
-                OperationKind::Delete => {
-                    let last = op.target.clone_last();
-                    let parent = op.target.parent();
-
-                    let Some(parent) = parent else {
-                        working_copy = Value::Null;
-                        continue;
-                    };
-
-                    let last = last.expect("Last should never be None if the there is a parent");
-
-                    let target_value = parent.resolve_mut(&mut working_copy)?;
-
-                    match target_value {
-                        Value::Array(array) => {
-                            let index =
-                                last.parse().map_err(|_| MigrationError::NotAnIndex(last))?;
-
-                            array.remove(index);
-                        }
-                        Value::Object(object) => {
-                            object.remove(&last);
-                        }
-                        _ => return Err(MigrationError::CannotDeleteOn(target_value.clone())),
-                    }
-                }
-                OperationKind::Copy { new_path: copy_to } => {
-                    let value = op.target.resolve(&working_copy)?.clone();
-                    working_copy.set_path(copy_to, value)?;
-                }
-            }
+        for operation in &self.operations {
+            operation.op.apply(&operation.target, &mut working_copy)?;
         }
 
         Ok(working_copy)
@@ -94,12 +55,13 @@ impl Migration {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use crate::migration::json_path::JsonPath;
     use crate::migration::operation::Operation;
     use crate::migration::operation_kind::OperationKind;
     use crate::migration::Migration;
-    use serde_json::json;
-    use std::str::FromStr;
+    use serde_json::{json, Number, Value};
+    use crate::migration::operation_kind::value_source::ValueSource;
 
     #[test]
     fn key_can_be_renamed() {
@@ -108,16 +70,87 @@ mod tests {
 
         let migration = Migration::with_operations([
             Operation::new(
-                JsonPath::from_str("$.a").unwrap(),
-                OperationKind::Copy {
-                    new_path: JsonPath::from_str("$.b").unwrap(),
-                },
+                JsonPath::from(["a"]),
+                OperationKind::Rename { new_path: JsonPath::from(["b"]), },
             ),
-            Operation::new(JsonPath::from_str("$.a").unwrap(), OperationKind::Delete),
         ]);
 
-        let renamed = migration.migrate(from);
+        let transformed = migration.migrate(from);
 
-        assert_eq!(renamed.unwrap(), to);
+        assert_eq!(transformed.unwrap(), to);
+    }
+
+    #[test]
+    fn set_value_directly() {
+        let from = json!({});
+        let to = json!({ "a": 10 });
+
+        let migration = Migration::with_operations([
+            Operation::new(
+                JsonPath::from(["a"]),
+                OperationKind::Set { value: Some(Value::Number(Number::from(10))), source: None, },
+            ),
+        ]);
+
+        let transformed = migration.migrate(from);
+
+        assert_eq!(transformed.unwrap(), to);
+    }
+
+    #[test]
+    fn set_value_from_path_source() {
+        let from = json!({ "a": 10 });
+        let to = json!({ "a": 10, "b": 10 });
+
+        let migration = Migration::with_operations([
+            Operation::new(
+                JsonPath::from(["b"]),
+                OperationKind::Set { value: None, source: Some(ValueSource::Path(JsonPath::from(["a"]))), },
+            ),
+        ]);
+
+        let transformed = migration.migrate(from);
+
+        assert_eq!(transformed.unwrap(), to);
+    }
+
+    #[test]
+    fn set_value_from_array_source() {
+        let from = json!({ "a": 10, "b": 20 });
+        let to = json!({ "a": 10, "b": 20, "c": [10, 20] });
+
+        let migration = Migration::with_operations([
+            Operation::new(
+                JsonPath::from(["c"]),
+                OperationKind::set_source(ValueSource::Array(vec![
+                    ValueSource::Path(JsonPath::from(["a"])),
+                    ValueSource::Path(JsonPath::from(["b"])),
+                ])),
+            ),
+        ]);
+
+        let transformed = migration.migrate(from);
+
+        assert_eq!(transformed.unwrap(), to);
+    }
+
+    #[test]
+    fn set_value_from_object_source() {
+        let from = json!({ "a": 10, "b": 20 });
+        let to = json!({ "a": 10, "b": 20, "c": { "d": 10, "e": 20 } });
+
+        let migration = Migration::with_operations([
+            Operation::new(
+                JsonPath::from(["c"]),
+                OperationKind::set_source(ValueSource::Object(HashMap::from([
+                    ("d".to_string(), ValueSource::Path(JsonPath::from(["a"]))),
+                    ("e".to_string(), ValueSource::Path(JsonPath::from(["b"]))),
+                ]))),
+            ),
+        ]);
+
+        let transformed = migration.migrate(from);
+
+        assert_eq!(transformed.unwrap(), to);
     }
 }
