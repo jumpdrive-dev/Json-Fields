@@ -1,23 +1,37 @@
-use crate::errors::validation_error::ValidationError;
-use crate::field::Field;
-use crate::{validator_impl, Validator};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use thiserror::Error;
+use crate::traits::validator::Validator;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Schema {
-    root: Field,
+#[derive(Debug, Error)]
+pub enum SchemaValidationError {
+    #[error("invalid schema value")]
+    InvalidSchemaValue,
 }
 
-#[validator_impl]
-impl Validator for Schema {
-    fn validate(&self, value: &Value) -> Result<(), ValidationError> {
-        self.root.validate(value)
+#[derive(Debug)]
+pub struct Schema {
+    inner: Value,
+}
+
+impl<'de> Deserialize<'de> for Schema {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+        let inner = Value::deserialize(deserializer)?;
+
+        Ok(Schema {
+            inner,
+        })
     }
 }
 
-impl From<Field> for Schema {
-    fn from(value: Field) -> Self {
-        Self { root: value }
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use crate::schema::Schema;
+
+    #[test]
+    fn root_type_schema_validates_value_correctly() {
+        let schema: Schema = serde_json::from_value(json!("string"))
+            .unwrap();
     }
 }
