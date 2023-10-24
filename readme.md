@@ -19,6 +19,5 @@ json_fields = { git = "https://github.com/Jumpdrive-dev/Json-Fields", rev = "<co
 This is a list of current and future features that this library supports:
 
 - [ ] Creating schemas by combining different fields.
-- [x] Ability to create custom validation logic.
 - [ ] Ability to change a schema and create migrations
 - [ ] Migrations are checked using the new resulting schema to ensure migrations result in the correct data shape. 
