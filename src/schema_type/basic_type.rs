@@ -7,7 +7,7 @@ use thiserror::Error;
 use uuid::{Error, Uuid};
 use crate::traits::validator::Validator;
 
-#[derive(Debug, Error)]
+#[derive(Debug, PartialEq, Error)]
 pub enum BasicTypeValidationError {
     #[error("Incorrect type provided. Expected '{0}' but got '{1}'")]
     IncorrectType(BasicType, Value),
@@ -19,9 +19,8 @@ pub enum BasicTypeValidationError {
     IncorrectEmail(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(PartialEq))]
 pub enum BasicType {
     String,
     Number,
@@ -164,6 +163,7 @@ mod tests {
     #[test]
     fn basic_email_type_is_validated_correctly() {
         assert!(BasicType::Email.validate(&json!("alice@example.com")).is_ok());
+        assert!(BasicType::Email.validate(&json!("alice+alias@example.com")).is_ok());
 
         assert!(BasicType::Email.validate(&json!("f1df9904-6f6b-4157-8a82-b1a566a50ec2")).is_err());
         assert!(BasicType::Email.validate(&json!("")).is_err());

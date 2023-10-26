@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use crate::schema_type::advanced_type::AdvancedType;
-use crate::schema_type::basic_type::BasicType;
+use serde_json::Value;
+use thiserror::Error;
+use crate::schema_type::advanced_type::{AdvancedType, AdvancedTypeValidationError};
+use crate::schema_type::basic_type::{BasicType, BasicTypeValidationError};
+use crate::traits::validator::Validator;
 
 pub mod basic_type;
 pub mod advanced_type;
@@ -14,6 +17,32 @@ pub enum SchemaType {
     Advanced(AdvancedType),
     Array(Vec<SchemaType>),
     Object(HashMap<String, SchemaType>),
+}
+
+#[derive(Debug, Error, PartialEq)]
+pub enum SchemaTypeValidationError {
+    #[error("{0}")]
+    BasicTypeValidationError(#[from] BasicTypeValidationError),
+
+    #[error("{0}")]
+    AdvancedTypeValidationError(#[from] AdvancedTypeValidationError),
+}
+
+impl Validator for SchemaType {
+    type E = SchemaTypeValidationError;
+
+    fn validate(&self, value: &Value) -> Result<(), Self::E> {
+        match self {
+            SchemaType::Basic(basic_type) => Ok(basic_type.validate(value)?),
+            SchemaType::Advanced(advanced_type) => Ok(advanced_type.validate(value)?),
+            SchemaType::Array(_) => {
+                todo!()
+            }
+            SchemaType::Object(_) => {
+                todo!()
+            }
+        }
+    }
 }
 
 #[cfg(test)]

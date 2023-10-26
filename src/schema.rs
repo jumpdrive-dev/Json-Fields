@@ -9,6 +9,7 @@ pub enum SchemaValidationError {
     InvalidSchemaValue,
 }
 
+/// A schema encapsulates multiple version of the schema which are updated through migrations.
 #[derive(Debug)]
 pub struct Schema {
     inner: Value,
