@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -9,14 +10,23 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(PartialEq))]
 pub struct AdvancedStringType {
     #[serde(default = "default_true")]
     pub require_filled: bool,
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
+}
+
+impl Display for AdvancedStringType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.require_filled {
+            write!(f, "filled ")?;
+        }
+
+        write!(f, "string")
+    }
 }
 
 impl Default for AdvancedStringType {

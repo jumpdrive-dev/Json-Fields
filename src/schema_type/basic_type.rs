@@ -1,13 +1,13 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use serde::{Deserialize, Serialize};
-use serde_email::{Email, is_valid_email};
+use serde_email::{is_valid_email};
 use serde_json::Value;
 use thiserror::Error;
-use uuid::{Error, Uuid};
+use uuid::{Uuid};
 use crate::traits::validator::Validator;
 
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Clone, PartialEq, Error)]
 pub enum BasicTypeValidationError {
     #[error("Incorrect type provided. Expected '{0}' but got '{1}'")]
     IncorrectType(BasicType, Value),
@@ -19,6 +19,8 @@ pub enum BasicTypeValidationError {
     IncorrectEmail(String),
 }
 
+/// Basic types don't have any additional configuration and only check the variant of [Value] and
+/// might do a bit of extra validation in the case of [BasicType::Uuid] and [BasicType::Email].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BasicType {
