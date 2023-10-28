@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter};
+use crate::traits::validator::Validator;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fmt::{Display, Formatter};
 use thiserror::Error;
-use crate::traits::validator::Validator;
 
 /// Helper function to let Serde set a default value of `true`. Check this
 /// [GitHub issue](https://github.com/serde-rs/serde/issues/368) for more information.
@@ -84,73 +84,118 @@ impl Validator for AdvancedStringType {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
-    use crate::schema_type::advanced_type::advanced_string_type::{AdvancedStringType, StringValidationError};
+    use crate::schema_type::advanced_type::advanced_string_type::{
+        AdvancedStringType, StringValidationError,
+    };
     use crate::traits::validator::Validator;
+    use serde_json::json;
 
     #[test]
     fn advanced_string_type_requires_filled_string_by_default() {
-        assert_eq!(AdvancedStringType::default().validate(&json!("")), Err(StringValidationError::RequireFilled));
+        assert_eq!(
+            AdvancedStringType::default().validate(&json!("")),
+            Err(StringValidationError::RequireFilled)
+        );
     }
 
     #[test]
     fn advanced_string_type_requires_filled_is_checked_correctly() {
-        assert_eq!(AdvancedStringType {
-            require_filled: true,
-            ..AdvancedStringType::default()
-        }.validate(&json!("")), Err(StringValidationError::RequireFilled));
+        assert_eq!(
+            AdvancedStringType {
+                require_filled: true,
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("")),
+            Err(StringValidationError::RequireFilled)
+        );
 
-        assert_eq!(AdvancedStringType {
-            require_filled: false,
-            ..AdvancedStringType::default()
-        }.validate(&json!("")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                require_filled: false,
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("")),
+            Ok(())
+        );
     }
 
     #[test]
     fn advanced_string_type_min_length_is_checked_correctly() {
-        assert_eq!(AdvancedStringType {
-            require_filled: false,
-            min_length: Some(0),
-            ..AdvancedStringType::default()
-        }.validate(&json!("")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                require_filled: false,
+                min_length: Some(0),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("")),
+            Ok(())
+        );
 
-        assert_eq!(AdvancedStringType {
-            min_length: Some(5),
-            ..AdvancedStringType::default()
-        }.validate(&json!("abcde")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                min_length: Some(5),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("abcde")),
+            Ok(())
+        );
 
-        assert_eq!(AdvancedStringType {
-            min_length: Some(5),
-            ..AdvancedStringType::default()
-        }.validate(&json!("abcdef")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                min_length: Some(5),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("abcdef")),
+            Ok(())
+        );
 
-        assert_eq!(AdvancedStringType {
-            min_length: Some(5),
-            ..AdvancedStringType::default()
-        }.validate(&json!("abcd")), Err(StringValidationError::StringTooShort));
+        assert_eq!(
+            AdvancedStringType {
+                min_length: Some(5),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("abcd")),
+            Err(StringValidationError::StringTooShort)
+        );
     }
 
     #[test]
     fn advanced_string_type_max_length_is_checked_correctly() {
-        assert_eq!(AdvancedStringType {
-            require_filled: false,
-            max_length: Some(0),
-            ..AdvancedStringType::default()
-        }.validate(&json!("")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                require_filled: false,
+                max_length: Some(0),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("")),
+            Ok(())
+        );
 
-        assert_eq!(AdvancedStringType {
-            max_length: Some(5),
-            ..AdvancedStringType::default()
-        }.validate(&json!("abcde")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                max_length: Some(5),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("abcde")),
+            Ok(())
+        );
 
-        assert_eq!(AdvancedStringType {
-            max_length: Some(5),
-            ..AdvancedStringType::default()
-        }.validate(&json!("abcd")), Ok(()));
+        assert_eq!(
+            AdvancedStringType {
+                max_length: Some(5),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("abcd")),
+            Ok(())
+        );
 
-        assert_eq!(AdvancedStringType {
-            max_length: Some(5),
-            ..AdvancedStringType::default()
-        }.validate(&json!("abcdef")), Err(StringValidationError::StringTooLong));
+        assert_eq!(
+            AdvancedStringType {
+                max_length: Some(5),
+                ..AdvancedStringType::default()
+            }
+            .validate(&json!("abcdef")),
+            Err(StringValidationError::StringTooLong)
+        );
     }
 }

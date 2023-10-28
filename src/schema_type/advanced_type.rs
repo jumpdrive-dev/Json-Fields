@@ -2,15 +2,17 @@ pub mod advanced_string_type;
 pub mod any_of_type;
 pub mod optional_type;
 
-use std::fmt::{Display, Formatter, Pointer};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use thiserror::Error;
-use crate::schema_type::advanced_type::advanced_string_type::{AdvancedStringType, StringValidationError};
-use crate::schema_type::{SchemaType, SchemaTypeValidationError};
+use crate::schema_type::advanced_type::advanced_string_type::{
+    AdvancedStringType, StringValidationError,
+};
 use crate::schema_type::advanced_type::any_of_type::{AnyOfType, AnyOfTypeError};
 use crate::schema_type::advanced_type::optional_type::OptionalType;
+use crate::schema_type::SchemaTypeValidationError;
 use crate::traits::validator::Validator;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::fmt::{Display, Formatter, Pointer};
+use thiserror::Error;
 
 /// Types that require more configuration than just checking if the type matches.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -79,13 +81,13 @@ impl Validator for AdvancedType {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
     use crate::schema_type::advanced_type::advanced_string_type::AdvancedStringType;
-    use crate::schema_type::advanced_type::AdvancedType;
     use crate::schema_type::advanced_type::any_of_type::AnyOfType;
     use crate::schema_type::advanced_type::optional_type::OptionalType;
+    use crate::schema_type::advanced_type::AdvancedType;
     use crate::schema_type::basic_type::BasicType;
     use crate::schema_type::SchemaType;
+    use serde_json::json;
 
     #[test]
     fn advanced_string_type_is_deserialized_correctly() {
@@ -95,13 +97,16 @@ mod tests {
             "minLength": 10,
             "maxLength": 20,
         }))
-            .unwrap();
+        .unwrap();
 
-        assert_eq!(advanced_type, AdvancedType::String(AdvancedStringType {
-            require_filled: false,
-            min_length: Some(10),
-            max_length: Some(20),
-        }));
+        assert_eq!(
+            advanced_type,
+            AdvancedType::String(AdvancedStringType {
+                require_filled: false,
+                min_length: Some(10),
+                max_length: Some(20),
+            })
+        );
     }
 
     #[test]
@@ -113,14 +118,17 @@ mod tests {
                 "number",
             ],
         }))
-            .unwrap();
+        .unwrap();
 
-        assert_eq!(advanced_type, AdvancedType::AnyOf(AnyOfType {
-            variants: vec![
-                SchemaType::Basic(BasicType::String),
-                SchemaType::Basic(BasicType::Number),
-            ],
-        }));
+        assert_eq!(
+            advanced_type,
+            AdvancedType::AnyOf(AnyOfType {
+                variants: vec![
+                    SchemaType::Basic(BasicType::String),
+                    SchemaType::Basic(BasicType::Number),
+                ],
+            })
+        );
     }
 
     #[test]
@@ -129,10 +137,13 @@ mod tests {
             "$": "optional",
             "type": "string"
         }))
-            .unwrap();
+        .unwrap();
 
-        assert_eq!(advanced_type, AdvancedType::Optional(OptionalType {
-            kind: Box::new(SchemaType::Basic(BasicType::String))
-        }));
+        assert_eq!(
+            advanced_type,
+            AdvancedType::Optional(OptionalType {
+                kind: Box::new(SchemaType::Basic(BasicType::String))
+            })
+        );
     }
 }

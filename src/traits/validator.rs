@@ -1,5 +1,5 @@
-use std::error::Error;
 use serde_json::Value;
+use std::error::Error;
 
 pub trait Validator {
     type E: Error;

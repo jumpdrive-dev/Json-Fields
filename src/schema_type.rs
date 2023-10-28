@@ -1,14 +1,14 @@
-use std::collections::HashMap;
-use std::fmt::{Debug, Display, Formatter};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use thiserror::Error;
 use crate::schema_type::advanced_type::{AdvancedType, AdvancedTypeValidationError};
 use crate::schema_type::basic_type::{BasicType, BasicTypeValidationError};
 use crate::traits::validator::Validator;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter};
+use thiserror::Error;
 
-pub mod basic_type;
 pub mod advanced_type;
+pub mod basic_type;
 
 /// Root schema type that encompasses all the different types that can be validated.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl Display for SchemaType {
             SchemaType::Basic(basic_type) => Display::fmt(basic_type, f),
             SchemaType::Advanced(advanced_type) => Display::fmt(advanced_type, f),
             SchemaType::Array(item) => {
-                write!(f, "array filled with '{}'", item.0.to_string())
+                write!(f, "array filled with '{}'", item.0)
             }
             SchemaType::Tuple(_) => {
                 todo!()
@@ -61,10 +61,10 @@ impl Validator for SchemaType {
         match self {
             SchemaType::Basic(basic_type) => Ok(basic_type.validate(value)?),
             SchemaType::Advanced(advanced_type) => Ok(advanced_type.validate(value)?),
-            SchemaType::Array(items) => {
+            SchemaType::Array(_items) => {
                 todo!()
             }
-            SchemaType::Tuple(items) => {
+            SchemaType::Tuple(_items) => {
                 todo!()
             }
             SchemaType::Object(map) => {
@@ -92,30 +92,32 @@ impl Validator for SchemaType {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use serde_json::json;
-    use crate::schema_type::{AdvancedType, BasicType, SchemaType, SchemaTypeValidationError};
     use crate::schema_type::advanced_type::advanced_string_type::AdvancedStringType;
     use crate::schema_type::basic_type::BasicTypeValidationError;
+    use crate::schema_type::{AdvancedType, BasicType, SchemaType, SchemaTypeValidationError};
     use crate::traits::validator::Validator;
+    use serde_json::json;
+    use std::collections::HashMap;
 
     #[test]
     fn basic_schema_type_can_be_deserialized() {
-        let value: SchemaType = serde_json::from_value(json!("string"))
-            .unwrap();
+        let value: SchemaType = serde_json::from_value(json!("string")).unwrap();
 
         assert_eq!(value, SchemaType::Basic(BasicType::String));
     }
 
     #[test]
     fn advanced_string_type_can_be_deserialized() {
-        let value: SchemaType = serde_json::from_value(json!({ "$": "string", "minLength": 10 }))
-            .unwrap();
+        let value: SchemaType =
+            serde_json::from_value(json!({ "$": "string", "minLength": 10 })).unwrap();
 
-        assert_eq!(value, SchemaType::Advanced(AdvancedType::String(AdvancedStringType {
-            min_length: Some(10),
-            ..Default::default()
-        })));
+        assert_eq!(
+            value,
+            SchemaType::Advanced(AdvancedType::String(AdvancedStringType {
+                min_length: Some(10),
+                ..Default::default()
+            }))
+        );
 
         let result = serde_json::from_value::<SchemaType>(json!({ "minLength": 10 }));
         assert!(result.is_err());
@@ -126,37 +128,38 @@ mod tests {
         let value: SchemaType = serde_json::from_value(json!({
             "name": "string"
         }))
-            .unwrap();
+        .unwrap();
 
-        assert_eq!(value, SchemaType::Object(HashMap::from([
-            ("name".to_string(), SchemaType::Basic(BasicType::String))
-        ])));
+        assert_eq!(
+            value,
+            SchemaType::Object(HashMap::from([(
+                "name".to_string(),
+                SchemaType::Basic(BasicType::String)
+            )]))
+        );
     }
 
     #[test]
     fn nested_values_in_array_are_deserialized_correctly() {
-        let value: SchemaType = serde_json::from_value(json!([
-            "string"
-        ]))
-            .unwrap();
+        let value: SchemaType = serde_json::from_value(json!(["string"])).unwrap();
 
-        assert_eq!(value, SchemaType::Array((
-            Box::new(SchemaType::Basic(BasicType::String)),
-        )));
+        assert_eq!(
+            value,
+            SchemaType::Array((Box::new(SchemaType::Basic(BasicType::String)),))
+        );
     }
 
     #[test]
     fn nested_values_in_tuple_are_deserialized_correctly() {
-        let value: SchemaType = serde_json::from_value(json!([
-            "string",
-            "number"
-        ]))
-            .unwrap();
+        let value: SchemaType = serde_json::from_value(json!(["string", "number"])).unwrap();
 
-        assert_eq!(value, SchemaType::Tuple(vec![
-            SchemaType::Basic(BasicType::String),
-            SchemaType::Basic(BasicType::Number),
-        ]));
+        assert_eq!(
+            value,
+            SchemaType::Tuple(vec![
+                SchemaType::Basic(BasicType::String),
+                SchemaType::Basic(BasicType::Number),
+            ])
+        );
     }
 
     #[test]
@@ -165,30 +168,39 @@ mod tests {
             "name": "string",
             "age": "number",
         }))
-            .unwrap();
+        .unwrap();
 
-        assert_eq!(value.validate(&json!({
-            "name": "Alice",
-            "age": 42
-        })), Ok(()));
+        assert_eq!(
+            value.validate(&json!({
+                "name": "Alice",
+                "age": 42
+            })),
+            Ok(())
+        );
 
-        assert_eq!(value.validate(&json!("")), Err(SchemaTypeValidationError::NotAnObject));
+        assert_eq!(
+            value.validate(&json!("")),
+            Err(SchemaTypeValidationError::NotAnObject)
+        );
 
-        assert_eq!(value.validate(&json!({
-            "age": 42
-        })), Err(SchemaTypeValidationError::MissingObjectKey("name".to_string())));
+        assert_eq!(
+            value.validate(&json!({
+                "age": 42
+            })),
+            Err(SchemaTypeValidationError::MissingObjectKey(
+                "name".to_string()
+            ))
+        );
 
-        assert_eq!(value.validate(&json!({
-            "name": 10,
-            "age": 42
-        })), Err(
-            SchemaTypeValidationError::BasicTypeValidationError(
-                BasicTypeValidationError::IncorrectType(
-                    BasicType::String,
-                    json!(10)
-                )
-            )
-        ));
+        assert_eq!(
+            value.validate(&json!({
+                "name": 10,
+                "age": 42
+            })),
+            Err(SchemaTypeValidationError::BasicTypeValidationError(
+                BasicTypeValidationError::IncorrectType(BasicType::String, json!(10))
+            ))
+        );
     }
 
     #[test]
@@ -199,7 +211,7 @@ mod tests {
                 "type": "string"
             }
         }))
-            .unwrap();
+        .unwrap();
 
         assert_eq!(advanced_type.validate(&json!({})), Ok(()));
     }
@@ -212,10 +224,12 @@ mod tests {
                 "type": "string"
             }
         }))
-            .unwrap();
+        .unwrap();
 
-        assert!(advanced_type.validate(&json!({
-            "name": 10,
-        })).is_err());
+        assert!(advanced_type
+            .validate(&json!({
+                "name": 10,
+            }))
+            .is_err());
     }
 }
