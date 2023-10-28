@@ -24,6 +24,7 @@ pub enum BasicTypeValidationError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BasicType {
+    Any,
     String,
     Number,
     Null,
@@ -36,6 +37,7 @@ pub enum BasicType {
 impl Display for BasicType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let slice = match self {
+            BasicType::Any => "any",
             BasicType::String => "string",
             BasicType::Number => "number",
             BasicType::Null => "null",
@@ -54,6 +56,7 @@ impl Validator for BasicType {
 
     fn validate(&self, value: &Value) -> Result<(), Self::E> {
         match (self, value) {
+            (BasicType::Any, _) => Ok(()),
             (BasicType::Null, Value::Null) => Ok(()),
             (BasicType::Number, Value::Number(_)) => Ok(()),
             (BasicType::String, Value::String(_)) => Ok(()),
@@ -87,6 +90,17 @@ mod tests {
     use crate::schema_type::basic_type::BasicType;
     use crate::traits::validator::Validator;
     use serde_json::json;
+
+    #[test]
+    fn any_type_is_validated_correctly() {
+        assert!(BasicType::Any.validate(&json!(null)).is_ok());
+        assert!(BasicType::Any.validate(&json!("")).is_ok());
+        assert!(BasicType::Any.validate(&json!(10)).is_ok());
+        assert!(BasicType::Any.validate(&json!(true)).is_ok());
+        assert!(BasicType::Any.validate(&json!(false)).is_ok());
+        assert!(BasicType::Any.validate(&json!([])).is_ok());
+        assert!(BasicType::Any.validate(&json!({})).is_ok());
+    }
 
     #[test]
     fn basic_null_type_is_validated_correctly() {

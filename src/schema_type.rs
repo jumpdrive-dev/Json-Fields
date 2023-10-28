@@ -6,9 +6,21 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
+use crate::schema_type::advanced_type::array_type::ArrayType;
+use crate::schema_type::advanced_type::object_type::ObjectType;
+use crate::schema_type::advanced_type::tuple_type::TupleType;
 
 pub mod advanced_type;
 pub mod basic_type;
+
+#[derive(Debug, Error, PartialEq)]
+pub enum SchemaTypeValidationError {
+    #[error("{0}")]
+    BasicTypeValidationError(#[from] BasicTypeValidationError),
+
+    #[error("{0}")]
+    AdvancedTypeValidationError(#[from] AdvancedTypeValidationError),
+}
 
 /// Root schema type that encompasses all the different types that can be validated.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,29 +41,18 @@ impl Display for SchemaType {
             SchemaType::Array(item) => {
                 write!(f, "array filled with '{}'", item.0)
             }
-            SchemaType::Tuple(_) => {
-                todo!()
+            SchemaType::Tuple(items) => {
+                let tuple_type = TupleType {
+                    items: items.to_vec(),
+                };
+
+                Display::fmt(&tuple_type, f)
             }
             SchemaType::Object(_) => {
                 todo!()
             }
         }
     }
-}
-
-#[derive(Debug, Error, PartialEq)]
-pub enum SchemaTypeValidationError {
-    #[error("{0}")]
-    BasicTypeValidationError(#[from] BasicTypeValidationError),
-
-    #[error("{0}")]
-    AdvancedTypeValidationError(#[from] AdvancedTypeValidationError),
-
-    #[error("Expected an object, but got something else")]
-    NotAnObject,
-
-    #[error("Missing object key: '{0}'")]
-    MissingObjectKey(String),
 }
 
 impl Validator for SchemaType {
@@ -61,30 +62,30 @@ impl Validator for SchemaType {
         match self {
             SchemaType::Basic(basic_type) => Ok(basic_type.validate(value)?),
             SchemaType::Advanced(advanced_type) => Ok(advanced_type.validate(value)?),
-            SchemaType::Array(_items) => {
-                todo!()
-            }
-            SchemaType::Tuple(_items) => {
-                todo!()
-            }
-            SchemaType::Object(map) => {
-                let Value::Object(target_map) = value else {
-                    return Err(SchemaTypeValidationError::NotAnObject);
+            SchemaType::Array(item) => {
+                let array_type = ArrayType {
+                    require_filled: false,
+                    items: item.0.clone(),
                 };
 
-                for (key, schema) in map {
-                    let Some(value) = target_map.get(key) else {
-                        if let SchemaType::Advanced(AdvancedType::Optional(_)) = schema {
-                            return Ok(());
-                        };
+                Ok(array_type.validate(value)
+                    .map_err(|error| SchemaTypeValidationError::AdvancedTypeValidationError(AdvancedTypeValidationError::ArrayError(error)))?)
+            }
+            SchemaType::Tuple(items) => {
+                let tuple_type = TupleType {
+                    items: items.to_vec()
+                };
 
-                        return Err(SchemaTypeValidationError::MissingObjectKey(key.to_string()));
-                    };
+                Ok(tuple_type.validate(value)
+                    .map_err(|error| SchemaTypeValidationError::AdvancedTypeValidationError(AdvancedTypeValidationError::TupleError(error)))?)
+            }
+            SchemaType::Object(map) => {
+                let object_type = ObjectType {
+                    object: map.clone(),
+                };
 
-                    schema.validate(value)?;
-                }
-
-                Ok(())
+                Ok(object_type.validate(value)
+                    .map_err(|error| SchemaTypeValidationError::AdvancedTypeValidationError(AdvancedTypeValidationError::ObjectError(error)))?)
             }
         }
     }
@@ -98,6 +99,8 @@ mod tests {
     use crate::traits::validator::Validator;
     use serde_json::json;
     use std::collections::HashMap;
+    use crate::schema_type::advanced_type::AdvancedTypeValidationError;
+    use crate::schema_type::advanced_type::object_type::ObjectTypeError;
 
     #[test]
     fn basic_schema_type_can_be_deserialized() {
@@ -180,32 +183,39 @@ mod tests {
 
         assert_eq!(
             value.validate(&json!("")),
-            Err(SchemaTypeValidationError::NotAnObject)
+            Err(SchemaTypeValidationError::AdvancedTypeValidationError(
+                AdvancedTypeValidationError::ObjectError(
+                    ObjectTypeError::NotAnObject
+                )
+            ))
         );
 
         assert_eq!(
             value.validate(&json!({
                 "age": 42
             })),
-            Err(SchemaTypeValidationError::MissingObjectKey(
-                "name".to_string()
-            ))
+            Err(
+                SchemaTypeValidationError::AdvancedTypeValidationError(
+                    AdvancedTypeValidationError::ObjectError(
+                        ObjectTypeError::MissingObjectKey(
+                            "name".to_string()
+                        )
+                    )
+                )
+            )
         );
 
-        assert_eq!(
+        assert!(
             value.validate(&json!({
                 "name": 10,
                 "age": 42
-            })),
-            Err(SchemaTypeValidationError::BasicTypeValidationError(
-                BasicTypeValidationError::IncorrectType(BasicType::String, json!(10))
-            ))
+            })).is_err()
         );
     }
 
     #[test]
     fn optional_type_in_object_is_resolved_correctly() {
-        let advanced_type: SchemaType = serde_json::from_value(json!({
+        let value: SchemaType = serde_json::from_value(json!({
             "name": {
                 "$": "optional",
                 "type": "string"
@@ -213,12 +223,12 @@ mod tests {
         }))
         .unwrap();
 
-        assert_eq!(advanced_type.validate(&json!({})), Ok(()));
+        assert_eq!(value.validate(&json!({})), Ok(()));
     }
 
     #[test]
     fn incorrect_optional_type_in_object_returns_an_error() {
-        let advanced_type: SchemaType = serde_json::from_value(json!({
+        let value: SchemaType = serde_json::from_value(json!({
             "name": {
                 "$": "optional",
                 "type": "string"
@@ -226,10 +236,49 @@ mod tests {
         }))
         .unwrap();
 
-        assert!(advanced_type
+        assert!(value
             .validate(&json!({
                 "name": 10,
             }))
             .is_err());
+    }
+
+    #[test]
+    fn unmatched_object_with_dollar_sign_key_is_deserialized_correctly() {
+        let value: SchemaType = serde_json::from_value(json!({
+            "$": "number",
+            "name": "string"
+        }))
+            .unwrap();
+
+        assert_eq!(
+            value,
+            SchemaType::Object(HashMap::from([
+                ("$".to_string(), SchemaType::Basic(BasicType::Number)),
+                ("name".to_string(), SchemaType::Basic(BasicType::String)),
+            ]))
+        );
+    }
+
+    #[test]
+    fn tuple_shorthand_is_resolved_correctly() {
+        let value: SchemaType = serde_json::from_value(json!([
+            "string",
+            "number"
+        ]))
+            .unwrap();
+
+        assert_eq!(value.validate(&json!([
+            "",
+            10
+        ])), Ok(()));
+
+        assert!(value.validate(&json!([
+            "",
+            ""
+        ])).is_err());
+
+        assert!(value.validate(&json!([""])).is_err());
+        assert!(value.validate(&json!(["", 10, ""])).is_err());
     }
 }

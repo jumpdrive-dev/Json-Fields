@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug, PartialEq)]
-pub struct AnyOfTypeError(pub Vec<SchemaType>);
+pub struct AnyOfTypeError(pub(crate) Vec<SchemaType>);
 
 impl Error for AnyOfTypeError {}
 
@@ -28,6 +28,19 @@ impl Display for AnyOfTypeError {
 #[serde(rename_all = "camelCase")]
 pub struct AnyOfType {
     pub(crate) variants: Vec<SchemaType>,
+}
+
+impl Display for AnyOfType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let any_of = self
+            .variants
+            .iter()
+            .map(|schema| schema.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        write!(f, "any of: {}", any_of)
+    }
 }
 
 impl Validator for AnyOfType {

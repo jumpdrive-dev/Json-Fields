@@ -3,20 +3,30 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
+use crate::shared::default_true;
 
-/// Helper function to let Serde set a default value of `true`. Check this
-/// [GitHub issue](https://github.com/serde-rs/serde/issues/368) for more information.
-fn default_true() -> bool {
-    true
+#[derive(Debug, PartialEq, Error)]
+pub enum StringValidationError {
+    #[error("The provided value is not a string")]
+    NotAString,
+
+    #[error("The provided string is empty, but should be filled")]
+    RequireFilled,
+
+    #[error("The provided string is too long")]
+    StringTooLong,
+
+    #[error("The provided string is too short")]
+    StringTooShort,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdvancedStringType {
     #[serde(default = "default_true")]
-    pub require_filled: bool,
-    pub min_length: Option<usize>,
-    pub max_length: Option<usize>,
+    pub(crate) require_filled: bool,
+    pub(crate) min_length: Option<usize>,
+    pub(crate) max_length: Option<usize>,
 }
 
 impl Display for AdvancedStringType {
@@ -37,21 +47,6 @@ impl Default for AdvancedStringType {
             max_length: None,
         }
     }
-}
-
-#[derive(Debug, PartialEq, Error)]
-pub enum StringValidationError {
-    #[error("The provided value is not a string")]
-    NotAString,
-
-    #[error("The provided string is empty, but should be filled")]
-    RequireFilled,
-
-    #[error("The provided string is too long")]
-    StringTooLong,
-
-    #[error("The provided string is too short")]
-    StringTooShort,
 }
 
 impl Validator for AdvancedStringType {

@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Display, Formatter};
 use crate::schema_type::{SchemaType, SchemaTypeValidationError};
 use crate::traits::validator::Validator;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,15 @@ use serde_json::Value;
 pub struct OptionalType {
     #[serde(rename = "type")]
     pub(crate) kind: Box<SchemaType>,
+}
+
+impl Display for OptionalType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "optional ")?;
+        Display::fmt(&self.kind, f)?;
+
+        Ok(())
+    }
 }
 
 impl Validator for OptionalType {
