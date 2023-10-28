@@ -39,7 +39,7 @@ impl Display for AdvancedType {
             AdvancedType::AnyOf(advanced_enum_type) => Display::fmt(advanced_enum_type, f),
             AdvancedType::Tuple(tuple_type) => Display::fmt(tuple_type, f),
             AdvancedType::Array(array_type) => Display::fmt(array_type, f),
-            AdvancedType::Object(_) => todo!(),
+            AdvancedType::Object(object_type) => Display::fmt(object_type, f),
             AdvancedType::Optional(optional_type) => Display::fmt(optional_type, f),
         }
     }
@@ -81,7 +81,7 @@ impl Validator for AdvancedType {
             AdvancedType::AnyOf(advanced_enum) => Ok(advanced_enum.validate(value)?),
             AdvancedType::Tuple(fixed_array_type) => Ok(fixed_array_type.validate(value)?),
             AdvancedType::Array(array_type) => Ok(array_type.validate(value)?),
-            AdvancedType::Object(_) => todo!(),
+            AdvancedType::Object(object_type) => Ok(object_type.validate(value)?),
             AdvancedType::Optional(optional_type) => Ok(optional_type.validate(value)?),
         }
     }

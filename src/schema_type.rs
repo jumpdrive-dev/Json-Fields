@@ -49,7 +49,7 @@ impl Display for SchemaType {
                 Display::fmt(&tuple_type, f)
             }
             SchemaType::Object(_) => {
-                todo!()
+                write!(f, "object")
             }
         }
     }
