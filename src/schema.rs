@@ -1,6 +1,10 @@
-use serde::{Deserialize, Deserializer};
+pub mod schema_change;
+
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use thiserror::Error;
+use crate::schema::schema_change::SchemaChange;
+use crate::schema_type::SchemaType;
 
 #[derive(Debug, Error)]
 pub enum SchemaValidationError {
@@ -9,29 +13,27 @@ pub enum SchemaValidationError {
 }
 
 /// A schema encapsulates multiple version of the schema which are updated through migrations.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Schema {
-    inner: Value,
+    version: u32,
+    initial: SchemaType,
+    changes: Vec<SchemaChange>,
 }
 
-impl<'de> Deserialize<'de> for Schema {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let inner = Value::deserialize(deserializer)?;
-
-        Ok(Schema { inner })
+impl Schema {
+    pub fn add_change(&mut self, change: SchemaChange) {
+        self.version += 1;
+        self.changes.push(change);
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::schema::Schema;
-    use serde_json::json;
-
-    #[test]
-    fn root_type_schema_validates_value_correctly() {
-        let _schema: Schema = serde_json::from_value(json!("string")).unwrap();
+impl From<SchemaType> for Schema {
+    fn from(value: SchemaType) -> Self {
+        Schema {
+            version: 0,
+            initial: value,
+            changes: vec![],
+        }
     }
 }

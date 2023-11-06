@@ -10,8 +10,9 @@ use serde_json::Value;
 /// instead.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OptionalType {
+    /// The optional type to check if not null or empty.
     #[serde(rename = "type")]
-    pub(crate) kind: Box<SchemaType>,
+    pub kind: Box<SchemaType>,
 }
 
 impl Display for OptionalType {
@@ -33,6 +34,22 @@ impl Validator for OptionalType {
 
         self.kind.validate(value)?;
         Ok(())
+    }
+}
+
+impl From<SchemaType> for OptionalType {
+    fn from(value: SchemaType) -> Self {
+        OptionalType {
+            kind: Box::new(value)
+        }
+    }
+}
+
+impl From<Box<SchemaType>> for OptionalType {
+    fn from(value: Box<SchemaType>) -> Self {
+        OptionalType {
+            kind: value
+        }
     }
 }
 

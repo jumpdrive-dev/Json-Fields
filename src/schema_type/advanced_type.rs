@@ -87,6 +87,42 @@ impl Validator for AdvancedType {
     }
 }
 
+impl From<AdvancedStringType> for AdvancedType {
+    fn from(value: AdvancedStringType) -> Self {
+        AdvancedType::String(value)
+    }
+}
+
+impl From<AnyOfType> for AdvancedType {
+    fn from(value: AnyOfType) -> Self {
+        AdvancedType::AnyOf(value)
+    }
+}
+
+impl From<TupleType> for AdvancedType {
+    fn from(value: TupleType) -> Self {
+        AdvancedType::Tuple(value)
+    }
+}
+
+impl From<ArrayType> for AdvancedType {
+    fn from(value: ArrayType) -> Self {
+        AdvancedType::Array(value)
+    }
+}
+
+impl From<ObjectType> for AdvancedType {
+    fn from(value: ObjectType) -> Self {
+        AdvancedType::Object(value)
+    }
+}
+
+impl From<OptionalType> for AdvancedType {
+    fn from(value: OptionalType) -> Self {
+        AdvancedType::Optional(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::schema_type::advanced_type::advanced_string_type::AdvancedStringType;
@@ -131,12 +167,12 @@ mod tests {
 
         assert_eq!(
             advanced_type,
-            AdvancedType::AnyOf(AnyOfType {
+            AnyOfType {
                 variants: vec![
-                    SchemaType::Basic(BasicType::String),
-                    SchemaType::Basic(BasicType::Number),
+                    BasicType::String.into(),
+                    BasicType::Number.into(),
                 ],
-            })
+            }.into()
         );
     }
 
@@ -153,12 +189,12 @@ mod tests {
 
         assert_eq!(
             advanced_type,
-            AdvancedType::Tuple(TupleType {
+            TupleType {
                 items: vec![
-                    SchemaType::Basic(BasicType::String),
-                    SchemaType::Basic(BasicType::Number),
+                    BasicType::String.into(),
+                    BasicType::Number.into(),
                 ],
-            })
+            }.into()
         );
     }
 
@@ -172,9 +208,9 @@ mod tests {
 
         assert_eq!(
             advanced_type,
-            AdvancedType::Optional(OptionalType {
-                kind: Box::new(SchemaType::Basic(BasicType::String))
-            })
+            OptionalType {
+                kind: Box::new(BasicType::String.into())
+            }.into()
         );
     }
 }

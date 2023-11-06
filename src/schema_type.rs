@@ -6,12 +6,17 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
+use crate::schema_type::advanced_type::advanced_string_type::AdvancedStringType;
+use crate::schema_type::advanced_type::any_of_type::AnyOfType;
 use crate::schema_type::advanced_type::array_type::ArrayType;
 use crate::schema_type::advanced_type::object_type::ObjectType;
+use crate::schema_type::advanced_type::optional_type::OptionalType;
 use crate::schema_type::advanced_type::tuple_type::TupleType;
+use crate::schema_type::field::Field;
 
 pub mod advanced_type;
 pub mod basic_type;
+pub mod field;
 
 #[derive(Debug, Error, PartialEq)]
 pub enum SchemaTypeValidationError {
@@ -27,6 +32,7 @@ pub enum SchemaTypeValidationError {
 #[serde(untagged, rename_all = "camelCase")]
 pub enum SchemaType {
     Basic(BasicType),
+    Field(Field),
     Advanced(AdvancedType),
     Array((Box<SchemaType>,)),
     Tuple(Vec<SchemaType>),
@@ -37,6 +43,7 @@ impl Display for SchemaType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             SchemaType::Basic(basic_type) => Display::fmt(basic_type, f),
+            SchemaType::Field(field) => Display::fmt(field, f),
             SchemaType::Advanced(advanced_type) => Display::fmt(advanced_type, f),
             SchemaType::Array(item) => {
                 write!(f, "array filled with '{}'", item.0)
@@ -61,6 +68,7 @@ impl Validator for SchemaType {
     fn validate(&self, value: &Value) -> Result<(), Self::E> {
         match self {
             SchemaType::Basic(basic_type) => Ok(basic_type.validate(value)?),
+            SchemaType::Field(field) => field.validate(value),
             SchemaType::Advanced(advanced_type) => Ok(advanced_type.validate(value)?),
             SchemaType::Array(item) => {
                 let array_type = ArrayType {
@@ -91,6 +99,78 @@ impl Validator for SchemaType {
     }
 }
 
+impl From<BasicType> for SchemaType {
+    fn from(value: BasicType) -> Self {
+        SchemaType::Basic(value)
+    }
+}
+
+impl From<AdvancedType> for SchemaType {
+    fn from(value: AdvancedType) -> Self {
+        SchemaType::Advanced(value)
+    }
+}
+
+impl From<Field> for SchemaType {
+    fn from(value: Field) -> Self {
+        SchemaType::Field(value)
+    }
+}
+
+impl From<(SchemaType,)> for SchemaType {
+    fn from(value: (SchemaType, )) -> Self {
+        SchemaType::Array((Box::new(value.0),))
+    }
+}
+
+impl From<Vec<SchemaType>> for SchemaType {
+    fn from(value: Vec<SchemaType>) -> Self {
+        SchemaType::Tuple(value)
+    }
+}
+
+impl From<HashMap<String, SchemaType>> for SchemaType {
+    fn from(value: HashMap<String, SchemaType>) -> Self {
+        SchemaType::Object(value)
+    }
+}
+
+impl From<AdvancedStringType> for SchemaType {
+    fn from(value: AdvancedStringType) -> Self {
+        SchemaType::Advanced(value.into())
+    }
+}
+
+impl From<AnyOfType> for SchemaType {
+    fn from(value: AnyOfType) -> Self {
+        SchemaType::Advanced(value.into())
+    }
+}
+
+impl From<TupleType> for SchemaType {
+    fn from(value: TupleType) -> Self {
+        SchemaType::Advanced(value.into())
+    }
+}
+
+impl From<ArrayType> for SchemaType {
+    fn from(value: ArrayType) -> Self {
+        SchemaType::Advanced(value.into())
+    }
+}
+
+impl From<ObjectType> for SchemaType {
+    fn from(value: ObjectType) -> Self {
+        SchemaType::Advanced(value.into())
+    }
+}
+
+impl From<OptionalType> for SchemaType {
+    fn from(value: OptionalType) -> Self {
+        SchemaType::Advanced(value.into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::schema_type::advanced_type::advanced_string_type::AdvancedStringType;
@@ -116,10 +196,10 @@ mod tests {
 
         assert_eq!(
             value,
-            SchemaType::Advanced(AdvancedType::String(AdvancedStringType {
+            AdvancedStringType {
                 min_length: Some(10),
                 ..Default::default()
-            }))
+            }.into()
         );
 
         let result = serde_json::from_value::<SchemaType>(json!({ "minLength": 10 }));
@@ -135,10 +215,10 @@ mod tests {
 
         assert_eq!(
             value,
-            SchemaType::Object(HashMap::from([(
+            HashMap::from([(
                 "name".to_string(),
                 SchemaType::Basic(BasicType::String)
-            )]))
+            )]).into()
         );
     }
 
@@ -158,10 +238,10 @@ mod tests {
 
         assert_eq!(
             value,
-            SchemaType::Tuple(vec![
+            vec![
                 SchemaType::Basic(BasicType::String),
                 SchemaType::Basic(BasicType::Number),
-            ])
+            ].into()
         );
     }
 
@@ -253,10 +333,10 @@ mod tests {
 
         assert_eq!(
             value,
-            SchemaType::Object(HashMap::from([
+            HashMap::from([
                 ("$".to_string(), SchemaType::Basic(BasicType::Number)),
                 ("name".to_string(), SchemaType::Basic(BasicType::String)),
-            ]))
+            ]).into()
         );
     }
 

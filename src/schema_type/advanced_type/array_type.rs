@@ -24,11 +24,15 @@ impl From<SchemaTypeValidationError> for ArrayTypeError {
     }
 }
 
+/// Checks for a variable length array that all match the given type.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ArrayType {
+    /// If this is set to true, the array should have at least one item.
     #[serde(default = "default_true")]
-    pub(crate) require_filled: bool,
-    pub(crate) items: Box<SchemaType>,
+    pub require_filled: bool,
+
+    /// The shape that all items in the array should have.
+    pub items: Box<SchemaType>,
 }
 
 impl Display for ArrayType {

@@ -26,15 +26,23 @@ impl From<SchemaTypeValidationError> for ObjectTypeError {
 }
 
 /// This type checks for the exact keys. This differs from [SchemaType::Object] in that it cannot
-/// resolve to any other advanced type, so it allows for the '$' to be used for something else.
+/// resolve to any other advanced type, so it allows for '$' or '?' to be used for something else.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ObjectType {
-    pub(crate) object: HashMap<String, SchemaType>,
+    pub object: HashMap<String, SchemaType>,
 }
 
 impl Display for ObjectType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "object")
+    }
+}
+
+impl From<HashMap<String, SchemaType>> for ObjectType {
+    fn from(value: HashMap<String, SchemaType>) -> Self {
+        ObjectType {
+            object: value
+        }
     }
 }
 

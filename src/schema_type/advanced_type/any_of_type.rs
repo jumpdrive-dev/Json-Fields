@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug, PartialEq)]
-pub struct AnyOfTypeError(pub(crate) Vec<SchemaType>);
+pub struct AnyOfTypeError(pub Vec<SchemaType>);
 
 impl Error for AnyOfTypeError {}
 
@@ -27,7 +27,7 @@ impl Display for AnyOfTypeError {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnyOfType {
-    pub(crate) variants: Vec<SchemaType>,
+    pub variants: Vec<SchemaType>,
 }
 
 impl Display for AnyOfType {

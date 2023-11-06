@@ -23,9 +23,10 @@ impl From<SchemaTypeValidationError> for TupleError {
     }
 }
 
+/// Checks an array for the exact number of items and types.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TupleType {
-    pub(crate) items: Vec<SchemaType>,
+    pub items: Vec<SchemaType>,
 }
 
 impl Display for TupleType {
@@ -73,6 +74,14 @@ impl<const U: usize> From<[SchemaType; U]> for TupleType {
     }
 }
 
+impl From<Vec<SchemaType>> for TupleType {
+    fn from(value: Vec<SchemaType>) -> Self {
+        TupleType {
+            items: value
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -84,8 +93,8 @@ mod tests {
     #[test]
     fn all_items_are_validated_correctly() {
         let fixed_array_type = TupleType::from([
-            SchemaType::Basic(BasicType::String),
-            SchemaType::Basic(BasicType::Number),
+            BasicType::String.into(),
+            BasicType::Number.into(),
         ]);
 
         assert_eq!(fixed_array_type.validate(&json!([
@@ -111,8 +120,8 @@ mod tests {
     #[test]
     fn incorrect_number_of_items_returns_an_error() {
         let fixed_array_type = TupleType::from([
-            SchemaType::Basic(BasicType::String),
-            SchemaType::Basic(BasicType::Number),
+            BasicType::String.into(),
+            BasicType::Number.into(),
         ]);
 
         assert_eq!(fixed_array_type.validate(&json!([""])), Err(TupleError::IncorrectLength(1, 2)));

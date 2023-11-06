@@ -23,10 +23,15 @@ pub enum StringValidationError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdvancedStringType {
+    /// If this is set to true, the string cannot have a length of zero.
     #[serde(default = "default_true")]
-    pub(crate) require_filled: bool,
-    pub(crate) min_length: Option<usize>,
-    pub(crate) max_length: Option<usize>,
+    pub require_filled: bool,
+
+    /// If set, ensures the string is at least n number of characters long.
+    pub min_length: Option<usize>,
+
+    /// If set, ensures the string is less of equal to n characters long.
+    pub max_length: Option<usize>,
 }
 
 impl Display for AdvancedStringType {
